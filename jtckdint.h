@@ -58,606 +58,332 @@
 #define JTCKDINT_H_
 
 #ifdef __has_include
-#define __ckd_has_include(x) __has_include(x)
+#  define ckd_has_include(x) __has_include(x)
 #else
-#define __ckd_has_include(x) 0
+#  define ckd_has_include(x) 0
 #endif
 
-#if __ckd_has_include(<stdckdint.h>)
-#include <stdckdint.h>
+#if ckd_has_include(<stdckdint.h>)
+#  include <stdckdint.h>
 #else
 
-#define __STDC_VERSION_STDCKDINT_H__ 202311L
+#  if (defined(__llvm__) \
+       || (defined(__GNUC__) && __GNUC__ * 100 + __GNUC_MINOR__ >= 406)) \
+      && !defined(__STRICT_ANSI__)
+#    define ckd_have_int128
+#    define ckd_intmax __int128
+#  elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#    define ckd_intmax long long
+#  else
+#    define ckd_intmax long
+#  endif
 
-#if ((defined(__llvm__) ||                                              \
-      (defined(__GNUC__) && __GNUC__ * 100 + __GNUC_MINOR__ >= 406)) && \
-     !defined(__STRICT_ANSI__))
-#define __ckd_have_int128
-#define __ckd_intmax __int128
-#elif ((defined(__cplusplus) && __cplusplus >= 201103L) ||              \
-       (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L))
-#define __ckd_intmax long long
-#else
-#define __ckd_intmax long
-#endif
+typedef signed ckd_intmax ckd_intmax_t;
+typedef unsigned ckd_intmax ckd_uintmax_t;
 
-typedef signed __ckd_intmax __ckd_intmax_t;
-typedef unsigned __ckd_intmax __ckd_uintmax_t;
+#  ifdef __has_builtin
+#    define ckd_has_builtin(x) __has_builtin(x)
+#  else
+#    define ckd_has_builtin(x) 0
+#  endif
 
-#ifdef __has_builtin
-#define __ckd_has_builtin(x) __has_builtin(x)
-#else
-#define __ckd_has_builtin(x) 0
-#endif
+#  if !defined(__STRICT_ANSI__) \
+      && (defined(__GNUC__) && __GNUC__ >= 5 && !defined(__ICC) \
+          || ckd_has_builtin(__builtin_add_overflow) \
+              && ckd_has_builtin(__builtin_sub_overflow) \
+              && ckd_has_builtin(__builtin_mul_overflow))
+#    define ckd_add(res, x, y) __builtin_add_overflow((x), (y), (res))
+#    define ckd_sub(res, x, y) __builtin_sub_overflow((x), (y), (res))
+#    define ckd_mul(res, x, y) __builtin_mul_overflow((x), (y), (res))
 
-#if (!defined(__STRICT_ANSI__) &&                                       \
-     ((defined(__GNUC__) && __GNUC__ >= 5 && !defined(__ICC)) ||        \
-      (__ckd_has_builtin(__builtin_add_overflow) &&                     \
-       __ckd_has_builtin(__builtin_sub_overflow) &&                     \
-       __ckd_has_builtin(__builtin_mul_overflow))))
-#define ckd_add(res, x, y) __builtin_add_overflow((x), (y), (res))
-#define ckd_sub(res, x, y) __builtin_sub_overflow((x), (y), (res))
-#define ckd_mul(res, x, y) __builtin_mul_overflow((x), (y), (res))
+#  elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 
-#elif (defined(__cplusplus) &&                          \
-       (__cplusplus >= 201103L ||                       \
-        (defined(_MSC_VER) && __cplusplus >= 199711L && \
-         __ckd_has_include(<type_traits>) &&            \
-         __ckd_has_include(<limits>))))
-#include <type_traits>
-#include <limits>
+#    define ckd_add(res, a, b) ckd_expr(add, (res), (a), (b))
+#    define ckd_sub(res, a, b) ckd_expr(sub, (res), (a), (b))
+#    define ckd_mul(res, a, b) ckd_expr(mul, (res), (a), (b))
 
-template <typename __T, typename __U, typename __V>
-inline bool ckd_add(__T *__res, __U __a, __V __b) {
-  static_assert(std::is_integral<__T>::value &&
-                std::is_integral<__U>::value &&
-                std::is_integral<__V>::value,
-                "non-integral types not allowed");
-  static_assert(!std::is_same<__T, bool>::value &&
-                !std::is_same<__U, bool>::value &&
-                !std::is_same<__V, bool>::value,
-                "checked booleans not supported");
-  static_assert(!std::is_same<__T, char>::value &&
-                !std::is_same<__U, char>::value &&
-                !std::is_same<__V, char>::value,
-                "unqualified char type is ambiguous");
-  __ckd_uintmax_t __x = __a;
-  __ckd_uintmax_t __y = __b;
-  __ckd_uintmax_t __z = __x + __y;
-  *__res = __z;
-  if (sizeof(__z) > sizeof(__U) && sizeof(__z) > sizeof(__V)) {
-    if (sizeof(__z) > sizeof(__T) || std::is_signed<__T>::value) {
-      return static_cast<__ckd_intmax_t>(__z) != static_cast<__T>(__z);
-    } else if (!std::is_same<__T, __ckd_uintmax_t>::value) {
-      return (__z != static_cast<__T>(__z) ||
-              ((std::is_signed<__U>::value ||
-                std::is_signed<__V>::value) &&
-               static_cast<__ckd_intmax_t>(__z) < 0));
-    }
-  }
-  bool __truncated = false;
-  if (sizeof(__T) < sizeof(__ckd_intmax_t)) {
-    __truncated = __z != static_cast<__ckd_uintmax_t>(static_cast<__T>(__z));
-  }
-  switch (std::is_signed<__T>::value << 2 |  //
-          std::is_signed<__U>::value << 1 |  //
-          std::is_signed<__V>::value) {
-    case 0:  // u = u + u
-      return __truncated | (__z < __x);
-    case 1:  // u = u + s
-      __y ^= std::numeric_limits<__ckd_intmax_t>::min();
-      return __truncated |
-          (static_cast<__ckd_intmax_t>((__z ^ __x) &
-                                       (__z ^ __y)) < 0);
-    case 2:  // u = s + u
-      __x ^= std::numeric_limits<__ckd_intmax_t>::min();
-      return __truncated |
-          (static_cast<__ckd_intmax_t>((__z ^ __x) &
-                                       (__z ^ __y)) < 0);
-    case 3:  // u = s + s
-      return __truncated |
-          (static_cast<__ckd_intmax_t>(((__z | __x) &  __y) |
-                                       ((__z & __x) & ~__y)) < 0);
-    case 4:  // s = u + u
-      return __truncated | (__z < __x) | (static_cast<__ckd_intmax_t>(__z) < 0);
-    case 5:  // s = u + s
-      __y ^= std::numeric_limits<__ckd_intmax_t>::min();
-      return __truncated | (__x + __y < __y);
-    case 6:  // s = s + u
-      __x ^= std::numeric_limits<__ckd_intmax_t>::min();
-      return __truncated | (__x + __y < __x);
-    case 7:  // s = s + s
-      return __truncated |
-          (static_cast<__ckd_intmax_t>((__z ^ __x) &
-                                       (__z ^ __y)) < 0);
-    default:
-      for (;;) (void)0;
-  }
-}
+#    if defined(__GNUC__) || defined(__llvm__)
+#      define ckd_inline \
+        extern __inline \
+            __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+#    else
+#      define ckd_inline static inline
+#    endif
 
-template <typename __T, typename __U, typename __V>
-inline bool ckd_sub(__T *__res, __U __a, __V __b) {
-  static_assert(std::is_integral<__T>::value &&
-                std::is_integral<__U>::value &&
-                std::is_integral<__V>::value,
-                "non-integral types not allowed");
-  static_assert(!std::is_same<__T, bool>::value &&
-                !std::is_same<__U, bool>::value &&
-                !std::is_same<__V, bool>::value,
-                "checked booleans not supported");
-  static_assert(!std::is_same<__T, char>::value &&
-                !std::is_same<__U, char>::value &&
-                !std::is_same<__V, char>::value,
-                "unqualified char type is ambiguous");
-  __ckd_uintmax_t __x = __a;
-  __ckd_uintmax_t __y = __b;
-  __ckd_uintmax_t __z = __x - __y;
-  *__res = __z;
-  if (sizeof(__z) > sizeof(__U) && sizeof(__z) > sizeof(__V)) {
-    if (sizeof(__z) > sizeof(__T) || std::is_signed<__T>::value) {
-      return static_cast<__ckd_intmax_t>(__z) != static_cast<__T>(__z);
-    } else if (!std::is_same<__T, __ckd_uintmax_t>::value) {
-      return (__z != static_cast<__T>(__z) ||
-              ((std::is_signed<__U>::value ||
-                std::is_signed<__V>::value) &&
-               static_cast<__ckd_intmax_t>(__z) < 0));
-    }
-  }
-  bool __truncated = false;
-  if (sizeof(__T) < sizeof(__ckd_intmax_t)) {
-    __truncated = __z != static_cast<__ckd_uintmax_t>(static_cast<__T>(__z));
-  }
-  switch (std::is_signed<__T>::value << 2 |  //
-          std::is_signed<__U>::value << 1 |  //
-          std::is_signed<__V>::value) {
-    case 0:  // u = u - u
-      return __truncated | (__x < __y);
-    case 1:  // u = u - s
-      __y ^= std::numeric_limits<__ckd_intmax_t>::min();
-      return __truncated |
-          (static_cast<__ckd_intmax_t>((__x ^ __y) &
-                                       (__z ^ __x)) < 0);
-    case 2:  // u = s - u
-      return __truncated | (__y > __x) | (static_cast<__ckd_intmax_t>(__x) < 0);
-    case 3:  // u = s - s
-      return __truncated |
-          (static_cast<__ckd_intmax_t>(((__z & __x) &  __y) |
-                                       ((__z | __x) & ~__y)) < 0);
-    case 4:  // s = u - u
-      return __truncated |
-          ((__x < __y) ^ (static_cast<__ckd_intmax_t>(__z) < 0));
-    case 5:  // s = u - s
-      __y ^= std::numeric_limits<__ckd_intmax_t>::min();
-      return __truncated | (__x >= __y);
-    case 6:  // s = s - u
-      __x ^= std::numeric_limits<__ckd_intmax_t>::min();
-      return __truncated | (__x < __y);
-    case 7:  // s = s - s
-      return __truncated |
-          (static_cast<__ckd_intmax_t>((__x ^ __y) &
-                                       (__z ^ __x)) < 0);
-    default:
-      for (;;) (void)0;
-  }
-}
+#    ifdef ckd_have_int128
+/* clang-format off */
+#      define ckd_generic_int128(x, y) \
+        , signed __int128: x \
+        , unsigned __int128: y
+/* clang-format on */
+#    else
+#      define ckd_generic_int128(x, y)
+#    endif
 
-template <typename __T, typename __U, typename __V>
-inline bool ckd_mul(__T *__res, __U __a, __V __b) {
-  static_assert(std::is_integral<__T>::value &&
-                std::is_integral<__U>::value &&
-                std::is_integral<__V>::value,
-                "non-integral types not allowed");
-  static_assert(!std::is_same<__T, bool>::value &&
-                !std::is_same<__U, bool>::value &&
-                !std::is_same<__V, bool>::value,
-                "checked booleans not supported");
-  static_assert(!std::is_same<__T, char>::value &&
-                !std::is_same<__U, char>::value &&
-                !std::is_same<__V, char>::value,
-                "unqualified char type is ambiguous");
-  __ckd_uintmax_t __x = __a;
-  __ckd_uintmax_t __y = __b;
-  if ((sizeof(__U) * 8 - std::is_signed<__U>::value) +
-      (sizeof(__V) * 8 - std::is_signed<__V>::value) <=
-      (sizeof(__T) * 8 - std::is_signed<__T>::value)) {
-    if (sizeof(__ckd_uintmax_t) > sizeof(__T) || std::is_signed<__T>::value) {
-      __ckd_intmax_t __z = __x * __y;
-      return __z != (*__res = __z);
-    } else if (!std::is_same<__T, __ckd_uintmax_t>::value) {
-      __ckd_uintmax_t __z = __x * __y;
-      *__res = __z;
-      return (__z != static_cast<__T>(__z) ||
-              ((std::is_signed<__U>::value ||
-                std::is_signed<__V>::value) &&
-               static_cast<__ckd_intmax_t>(__z) < 0));
-    }
-  }
-  switch (std::is_signed<__T>::value << 2 |  //
-          std::is_signed<__U>::value << 1 |  //
-          std::is_signed<__V>::value) {
-    case 0: {  // u = u * u
-      __ckd_uintmax_t __z = __x * __y;
-      int __o = __x && __z / __x != __y;
-      *__res = __z;
-      return __o | (sizeof(__T) < sizeof(__z) &&
-                    __z != static_cast<__ckd_uintmax_t>(*__res));
-    }
-    case 1: {  // u = u * s
-      __ckd_uintmax_t __z = __x * __y;
-      int __o = __x && __z / __x != __y;
-      *__res = __z;
-      return (__o | ((static_cast<__ckd_intmax_t>(__y) < 0) & !!__x) |
-              (sizeof(__T) < sizeof(__z) &&
-               __z != static_cast<__ckd_uintmax_t>(*__res)));
-    }
-    case 2: {  // u = s * u
-      __ckd_uintmax_t __z = __x * __y;
-      int __o = __x && __z / __x != __y;
-      *__res = __z;
-      return (__o | ((static_cast<__ckd_intmax_t>(__x) < 0) & !!__y) |
-              (sizeof(__T) < sizeof(__z) &&
-               __z != static_cast<__ckd_uintmax_t>(*__res)));
-    }
-    case 3: { // u = s * s
-      int __o = false;
-      if (static_cast<__ckd_intmax_t>(__x & __y) < 0) {
-        __x = -__x;
-        __y = -__y;
-      } else if (static_cast<__ckd_intmax_t>(__x ^ __y) < 0) {
-        __o = __x && __y;
+#    define ckd_sign(T) ((T)1 << (sizeof(T) * 8 - 1))
+
+#    define ckd_is_signed(x) \
+      _Generic(x, \
+          signed char: 1, \
+          unsigned char: 0, \
+          signed short: 1, \
+          unsigned short: 0, \
+          signed int: 1, \
+          unsigned int: 0, \
+          signed long: 1, \
+          unsigned long: 0, \
+          signed long long: 1, \
+          unsigned long long: 0 ckd_generic_int128(1, 0))
+
+#    define ckd_expr(op, res, a, b) \
+      (_Generic(*res, \
+          signed char: ckd_##op##_schar, \
+          unsigned char: ckd_##op##_uchar, \
+          signed short: ckd_##op##_sshort, \
+          unsigned short: ckd_##op##_ushort, \
+          signed int: ckd_##op##_sint, \
+          unsigned int: ckd_##op##_uint, \
+          signed long: ckd_##op##_slong, \
+          unsigned long: ckd_##op##_ulong, \
+          signed long long: ckd_##op##_slonger, \
+          unsigned long long: ckd_##op##_ulonger ckd_generic_int128( \
+              ckd_##op##_sint128, ckd_##op##_uint128))( \
+          res, a, b, ckd_is_signed(a), ckd_is_signed(b)))
+
+#    define ckd_declare_add(S, T) \
+      ckd_inline char S(void* res, \
+                        ckd_uintmax_t x, \
+                        ckd_uintmax_t y, \
+                        char a_signed, \
+                        char b_signed) \
+      { \
+        ckd_uintmax_t z = x + y; \
+        *(T*)res = z; \
+        char truncated = 0; \
+        if (sizeof(T) < sizeof(ckd_intmax_t)) { \
+          truncated = z != (ckd_uintmax_t)(T)z; \
+        } \
+        switch (ckd_is_signed((T)0) << 2 | a_signed << 1 | b_signed) { \
+          case 0: /* u = u + u */ \
+            return truncated | (z < x); \
+          case 1: /* u = u + s */ \
+            y ^= ckd_sign(ckd_uintmax_t); \
+            return truncated | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0); \
+          case 2: /* u = s + u */ \
+            x ^= ckd_sign(ckd_uintmax_t); \
+            return truncated | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0); \
+          case 3: /* u = s + s */ \
+            return truncated \
+                | ((ckd_intmax_t)(((z | x) & y) | ((z & x) & ~y)) < 0); \
+          case 4: /* s = u + u */ \
+            return truncated | (z < x) | ((ckd_intmax_t)z < 0); \
+          case 5: /* s = u + s */ \
+            y ^= ckd_sign(ckd_uintmax_t); \
+            return truncated | (x + y < y); \
+          case 6: /* s = s + u */ \
+            x ^= ckd_sign(ckd_uintmax_t); \
+            return truncated | (x + y < x); \
+          case 7: /* s = s + s */ \
+            return truncated | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0); \
+          default: \
+            for (;;) \
+              (void)0; \
+        } \
       }
-      __ckd_uintmax_t __z = __x * __y;
-      __o |= __x && __z / __x != __y;
-      *__res = __z;
-      return __o | (sizeof(__T) < sizeof(__z) &&
-                    __z != static_cast<__ckd_uintmax_t>(*__res));
-    }
-    case 4: {  // s = u * u
-      __ckd_uintmax_t __z = __x * __y;
-      int __o = __x && __z / __x != __y;
-      *__res = __z;
-      return (__o | (static_cast<__ckd_intmax_t>(__z) < 0) |
-              (sizeof(__T) < sizeof(__z) &&
-               __z != static_cast<__ckd_uintmax_t>(*__res)));
-    }
-    case 5: {  // s = u * s
-      __ckd_uintmax_t __t = -__y;
-      __t = static_cast<__ckd_intmax_t>(__t) < 0 ? __y : __t;
-      __ckd_uintmax_t __p = __t * __x;
-      int __o = __t && __p / __t != __x;
-      int __n = static_cast<__ckd_intmax_t>(__y) < 0;
-      __ckd_uintmax_t __z = __n ? -__p : __p;
-      *__res = __z;
-      __ckd_uintmax_t __m = std::numeric_limits<__ckd_intmax_t>::max();
-      return (__o | (__p > __m + __n) |
-              (sizeof(__T) < sizeof(__z) &&
-               __z != static_cast<__ckd_uintmax_t>(*__res)));
-    }
-    case 6: {  // s = s * u
-      __ckd_uintmax_t __t = -__x;
-      __t = static_cast<__ckd_intmax_t>(__t) < 0 ? __x : __t;
-      __ckd_uintmax_t __p = __t * __y;
-      int __o = __t && __p / __t != __y;
-      int __n = static_cast<__ckd_intmax_t>(__x) < 0;
-      __ckd_uintmax_t __z = __n ? -__p : __p;
-      *__res = __z;
-      __ckd_uintmax_t __m = std::numeric_limits<__ckd_intmax_t>::max();
-      return (__o | (__p > __m + __n) |
-              (sizeof(__T) < sizeof(__z) &&
-               __z != static_cast<__ckd_uintmax_t>(*__res)));
-    }
-    case 7: {  // s = s * s
-      __ckd_uintmax_t __z = __x * __y;
-      *__res = __z;
-      return ((((static_cast<__ckd_intmax_t>(__y) < 0) &&
-                (static_cast<__ckd_intmax_t>(__x) ==
-                 std::numeric_limits<__ckd_intmax_t>::min())) ||
-               (__y && ((static_cast<__ckd_intmax_t>(__z) /
-                         static_cast<__ckd_intmax_t>(__y)) !=
-                        static_cast<__ckd_intmax_t>(__x)))) |
-              (sizeof(__T) < sizeof(__z) &&
-               __z != static_cast<__ckd_uintmax_t>(*__res)));
-    }
-    default:
-      for (;;) (void)0;
-  }
-}
 
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+/* clang-format off */
+ckd_declare_add(ckd_add_schar, signed char)
+ckd_declare_add(ckd_add_uchar, unsigned char)
+ckd_declare_add(ckd_add_sshort, signed short)
+ckd_declare_add(ckd_add_ushort, unsigned short)
+ckd_declare_add(ckd_add_sint, signed int)
+ckd_declare_add(ckd_add_uint, unsigned int)
+ckd_declare_add(ckd_add_slong, signed long)
+ckd_declare_add(ckd_add_ulong, unsigned long)
+ckd_declare_add(ckd_add_slonger, signed long long)
+ckd_declare_add(ckd_add_ulonger, unsigned long long)
+#    ifdef ckd_have_int128
+ckd_declare_add(ckd_add_sint128, signed __int128)
+ckd_declare_add(ckd_add_uint128, unsigned __int128)
+#    endif
+/* clang-format on */
 
-#define ckd_add(res, a, b) __ckd_expr(add, (res), (a), (b))
-#define ckd_sub(res, a, b) __ckd_expr(sub, (res), (a), (b))
-#define ckd_mul(res, a, b) __ckd_expr(mul, (res), (a), (b))
+#    define ckd_declare_sub(S, T) \
+      ckd_inline char S(void* res, \
+                        ckd_uintmax_t x, \
+                        ckd_uintmax_t y, \
+                        char a_signed, \
+                        char b_signed) \
+      { \
+        ckd_uintmax_t z = x - y; \
+        *(T*)res = z; \
+        char truncated = 0; \
+        if (sizeof(T) < sizeof(ckd_intmax_t)) { \
+          truncated = z != (ckd_uintmax_t)(T)z; \
+        } \
+        switch (ckd_is_signed((T)0) << 2 | a_signed << 1 | b_signed) { \
+          case 0: /* u = u - u */ \
+            return truncated | (x < y); \
+          case 1: /* u = u - s */ \
+            y ^= ckd_sign(ckd_uintmax_t); \
+            return truncated | ((ckd_intmax_t)((x ^ y) & (z ^ x)) < 0); \
+          case 2: /* u = s - u */ \
+            return truncated | (y > x) | ((ckd_intmax_t)x < 0); \
+          case 3: /* u = s - s */ \
+            return truncated \
+                | ((ckd_intmax_t)(((z & x) & y) | ((z | x) & ~y)) < 0); \
+          case 4: /* s = u - u */ \
+            return truncated | ((x < y) ^ ((ckd_intmax_t)z < 0)); \
+          case 5: /* s = u - s */ \
+            y ^= ckd_sign(ckd_uintmax_t); \
+            return truncated | (x >= y); \
+          case 6: /* s = s - u */ \
+            x ^= ckd_sign(ckd_uintmax_t); \
+            return truncated | (x < y); \
+          case 7: /* s = s - s */ \
+            return truncated | ((ckd_intmax_t)((x ^ y) & (z ^ x)) < 0); \
+          default: \
+            for (;;) \
+              (void)0; \
+        } \
+      }
 
-#if defined(__GNUC__) || defined(__llvm__)
-#define __ckd_inline                                    \
-  extern __inline __attribute__((__gnu_inline__,        \
-                                 __always_inline__,     \
-                                 __artificial__))
-#else
-#define __ckd_inline static inline
-#endif
+    /* clang-format off */
+ckd_declare_sub(ckd_sub_schar, signed char)
+ckd_declare_sub(ckd_sub_uchar, unsigned char)
+ckd_declare_sub(ckd_sub_sshort, signed short)
+ckd_declare_sub(ckd_sub_ushort, unsigned short)
+ckd_declare_sub(ckd_sub_sint, signed int)
+ckd_declare_sub(ckd_sub_uint, unsigned int)
+ckd_declare_sub(ckd_sub_slong, signed long)
+ckd_declare_sub(ckd_sub_ulong, unsigned long)
+ckd_declare_sub(ckd_sub_slonger, signed long long)
+ckd_declare_sub(ckd_sub_ulonger, unsigned long long)
+#    ifdef ckd_have_int128
+ckd_declare_sub(ckd_sub_sint128, signed __int128)
+ckd_declare_sub(ckd_sub_uint128, unsigned __int128)
+#    endif
+/* clang-format on */
 
-#ifdef __ckd_have_int128
-#define __ckd_generic_int128(x, y) , signed __int128: x, unsigned __int128: y
-#else
-#define __ckd_generic_int128(x, y)
-#endif
+#    define ckd_declare_mul(S, T) \
+      ckd_inline char S(void* res, \
+                        ckd_uintmax_t x, \
+                        ckd_uintmax_t y, \
+                        char a_signed, \
+                        char b_signed) \
+      { \
+        switch (ckd_is_signed((T)0) << 2 | a_signed << 1 | b_signed) { \
+          case 0: { /* u = u * u */ \
+            ckd_uintmax_t z = x * y; \
+            int o = x && z / x != y; \
+            *(T*)res = z; \
+            return o \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res); \
+          } \
+          case 1: { /* u = u * s */ \
+            ckd_uintmax_t z = x * y; \
+            int o = x && z / x != y; \
+            *(T*)res = z; \
+            return ( \
+                o | (((ckd_intmax_t)y < 0) & !!x) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+          } \
+          case 2: { /* u = s * u */ \
+            ckd_uintmax_t z = x * y; \
+            int o = x && z / x != y; \
+            *(T*)res = z; \
+            return ( \
+                o | (((ckd_intmax_t)x < 0) & !!y) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+          } \
+          case 3: { /* u = s * s */ \
+            int o = 0; \
+            if ((ckd_intmax_t)(x & y) < 0) { \
+              x = -x; \
+              y = -y; \
+            } else if ((ckd_intmax_t)(x ^ y) < 0) { \
+              o = x && y; \
+            } \
+            ckd_uintmax_t z = x * y; \
+            o |= x && z / x != y; \
+            *(T*)res = z; \
+            return o \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res); \
+          } \
+          case 4: { /* s = u * u */ \
+            ckd_uintmax_t z = x * y; \
+            int o = x && z / x != y; \
+            *(T*)res = z; \
+            return ( \
+                o | ((ckd_intmax_t)(z) < 0) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+          } \
+          case 5: { /* s = u * s */ \
+            ckd_uintmax_t t = -y; \
+            t = (ckd_intmax_t)(t) < 0 ? y : t; \
+            ckd_uintmax_t p = t * x; \
+            int o = t && p / t != x; \
+            int n = (ckd_intmax_t)y < 0; \
+            ckd_uintmax_t z = n ? -p : p; \
+            *(T*)res = z; \
+            ckd_uintmax_t m = ckd_sign(ckd_uintmax_t) - 1; \
+            return ( \
+                o | (p > m + n) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+          } \
+          case 6: { /* s = s * u */ \
+            ckd_uintmax_t t = -x; \
+            t = (ckd_intmax_t)(t) < 0 ? x : t; \
+            ckd_uintmax_t p = t * y; \
+            int o = t && p / t != y; \
+            int n = (ckd_intmax_t)x < 0; \
+            ckd_uintmax_t z = n ? -p : p; \
+            *(T*)res = z; \
+            ckd_uintmax_t m = ckd_sign(ckd_uintmax_t) - 1; \
+            return ( \
+                o | (p > m + n) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+          } \
+          case 7: { /* s = s * s */ \
+            ckd_uintmax_t z = x * y; \
+            *(T*)res = z; \
+            return ( \
+                ((((ckd_intmax_t)y < 0) && (x == ckd_sign(ckd_uintmax_t))) \
+                 || (y \
+                     && (((ckd_intmax_t)z / (ckd_intmax_t)y) \
+                         != (ckd_intmax_t)x))) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+          } \
+          default: \
+            for (;;) \
+              (void)0; \
+        } \
+      }
 
-#define __ckd_sign(T)                           \
-  ((T)1 << (sizeof(T) * 8 - 1))
+    /* clang-format off */
+ckd_declare_mul(ckd_mul_schar, signed char)
+ckd_declare_mul(ckd_mul_uchar, unsigned char)
+ckd_declare_mul(ckd_mul_sshort, signed short)
+ckd_declare_mul(ckd_mul_ushort, unsigned short)
+ckd_declare_mul(ckd_mul_sint, signed int)
+ckd_declare_mul(ckd_mul_uint, unsigned int)
+ckd_declare_mul(ckd_mul_slong, signed long)
+ckd_declare_mul(ckd_mul_ulong, unsigned long)
+ckd_declare_mul(ckd_mul_slonger, signed long long)
+ckd_declare_mul(ckd_mul_ulonger, unsigned long long)
+#    ifdef ckd_have_int128
+ckd_declare_mul(ckd_mul_sint128, signed __int128)
+ckd_declare_mul(ckd_mul_uint128, unsigned __int128)
+#    endif
+/* clang-format on */
 
-#define __ckd_is_signed(x)                      \
-  _Generic(x,                                   \
-           signed char: 1,                      \
-           unsigned char: 0,                    \
-           signed short: 1,                     \
-           unsigned short: 0,                   \
-           signed int: 1,                       \
-           unsigned int: 0,                     \
-           signed long: 1,                      \
-           unsigned long: 0,                    \
-           signed long long: 1,                 \
-           unsigned long long: 0                \
-           __ckd_generic_int128(1, 0))
+#  else
+#    pragma message "checked integer arithmetic unsupported in this environment"
 
-#define __ckd_expr(op, res, a, b)                       \
-  (_Generic(*res,                                       \
-            signed char: __ckd_##op##_schar,            \
-            unsigned char: __ckd_##op##_uchar,          \
-            signed short: __ckd_##op##_sshort,          \
-            unsigned short: __ckd_##op##_ushort,        \
-            signed int: __ckd_##op##_sint,              \
-            unsigned int: __ckd_##op##_uint,            \
-            signed long: __ckd_##op##_slong,            \
-            unsigned long: __ckd_##op##_ulong,          \
-            signed long long: __ckd_##op##_slonger,     \
-            unsigned long long: __ckd_##op##_ulonger    \
-            __ckd_generic_int128(                       \
-                __ckd_##op##_sint128,                   \
-                __ckd_##op##_uint128))(                 \
-                    res, a, b,                          \
-                    __ckd_is_signed(a),                 \
-                    __ckd_is_signed(b)))
+#    define ckd_add(res, x, y) (*(res) = (x) + (y), 0)
+#    define ckd_sub(res, x, y) (*(res) = (x) - (y), 0)
+#    define ckd_mul(res, x, y) (*(res) = (x) * (y), 0)
 
-#define __ckd_declare_add(S, T)                                         \
-  __ckd_inline char S(void *__res,                                      \
-                      __ckd_uintmax_t __x,                              \
-                      __ckd_uintmax_t __y,                              \
-                      char __a_signed,                                  \
-                      char __b_signed) {                                \
-    __ckd_uintmax_t __z = __x + __y;                                    \
-    *(T *)__res = __z;                                                  \
-    char __truncated = 0;                                               \
-    if (sizeof(T) < sizeof(__ckd_intmax_t)) {                           \
-      __truncated = __z != (__ckd_uintmax_t)(T)__z;                     \
-    }                                                                   \
-    switch (__ckd_is_signed((T)0) << 2 |                                \
-            __a_signed << 1 | __b_signed) {                             \
-      case 0:  /* u = u + u */                                          \
-        return __truncated | (__z < __x);                               \
-      case 1:  /* u = u + s */                                          \
-        __y ^= __ckd_sign(__ckd_uintmax_t);                             \
-        return __truncated |                                            \
-            ((__ckd_intmax_t)((__z ^ __x) &                             \
-                              (__z ^ __y)) < 0);                        \
-      case 2:  /* u = s + u */                                          \
-        __x ^= __ckd_sign(__ckd_uintmax_t);                             \
-        return __truncated |                                            \
-            ((__ckd_intmax_t)((__z ^ __x) &                             \
-                              (__z ^ __y)) < 0);                        \
-      case 3:  /* u = s + s */                                          \
-        return __truncated |                                            \
-            ((__ckd_intmax_t)(((__z | __x) &  __y) |                    \
-                              ((__z & __x) & ~__y)) < 0);               \
-      case 4:  /* s = u + u */                                          \
-        return __truncated | (__z < __x) | ((__ckd_intmax_t)__z < 0);   \
-      case 5:  /* s = u + s */                                          \
-        __y ^= __ckd_sign(__ckd_uintmax_t);                             \
-        return __truncated | (__x + __y < __y);                         \
-      case 6:  /* s = s + u */                                          \
-        __x ^= __ckd_sign(__ckd_uintmax_t);                             \
-        return __truncated | (__x + __y < __x);                         \
-      case 7:  /* s = s + s */                                          \
-        return __truncated |                                            \
-            ((__ckd_intmax_t)((__z ^ __x) &                             \
-                              (__z ^ __y)) < 0);                        \
-      default:                                                          \
-        for (;;) (void)0;                                               \
-    }                                                                   \
-  }
-
-__ckd_declare_add(__ckd_add_schar, signed char)
-__ckd_declare_add(__ckd_add_uchar, unsigned char)
-__ckd_declare_add(__ckd_add_sshort, signed short)
-__ckd_declare_add(__ckd_add_ushort, unsigned short)
-__ckd_declare_add(__ckd_add_sint, signed int)
-__ckd_declare_add(__ckd_add_uint, unsigned int)
-__ckd_declare_add(__ckd_add_slong, signed long)
-__ckd_declare_add(__ckd_add_ulong, unsigned long)
-__ckd_declare_add(__ckd_add_slonger, signed long long)
-__ckd_declare_add(__ckd_add_ulonger, unsigned long long)
-#ifdef __ckd_have_int128
-__ckd_declare_add(__ckd_add_sint128, signed __int128)
-__ckd_declare_add(__ckd_add_uint128, unsigned __int128)
-#endif
-
-#define __ckd_declare_sub(S, T)                                         \
-  __ckd_inline char S(void *__res,                                      \
-                      __ckd_uintmax_t __x,                              \
-                      __ckd_uintmax_t __y,                              \
-                      char __a_signed,                                  \
-                      char __b_signed) {                                \
-    __ckd_uintmax_t __z = __x - __y;                                    \
-    *(T *)__res = __z;                                                  \
-    char __truncated = 0;                                               \
-    if (sizeof(T) < sizeof(__ckd_intmax_t)) {                           \
-      __truncated = __z != (__ckd_uintmax_t)(T)__z;                     \
-    }                                                                   \
-    switch (__ckd_is_signed((T)0) << 2 |                                \
-            __a_signed << 1 | __b_signed) {                             \
-      case 0:  /* u = u - u */                                          \
-        return __truncated | (__x < __y);                               \
-      case 1:  /* u = u - s */                                          \
-        __y ^= __ckd_sign(__ckd_uintmax_t);                             \
-        return __truncated |                                            \
-            ((__ckd_intmax_t)((__x ^ __y) &                             \
-                              (__z ^ __x)) < 0);                        \
-      case 2:  /* u = s - u */                                          \
-        return __truncated | (__y > __x) | ((__ckd_intmax_t)__x < 0);   \
-      case 3:  /* u = s - s */                                          \
-        return __truncated |                                            \
-            ((__ckd_intmax_t)(((__z & __x) &  __y) |                    \
-                              ((__z | __x) & ~__y)) < 0);               \
-      case 4:  /* s = u - u */                                          \
-        return __truncated | ((__x < __y) ^ ((__ckd_intmax_t)__z < 0)); \
-      case 5:  /* s = u - s */                                          \
-        __y ^= __ckd_sign(__ckd_uintmax_t);                             \
-        return __truncated | (__x >= __y);                              \
-      case 6:  /* s = s - u */                                          \
-        __x ^= __ckd_sign(__ckd_uintmax_t);                             \
-        return __truncated | (__x < __y);                               \
-      case 7:  /* s = s - s */                                          \
-        return __truncated |                                            \
-            ((__ckd_intmax_t)((__x ^ __y) &                             \
-                              (__z ^ __x)) < 0);                        \
-      default:                                                          \
-        for (;;) (void)0;                                               \
-    }                                                                   \
-  }
-
-__ckd_declare_sub(__ckd_sub_schar, signed char)
-__ckd_declare_sub(__ckd_sub_uchar, unsigned char)
-__ckd_declare_sub(__ckd_sub_sshort, signed short)
-__ckd_declare_sub(__ckd_sub_ushort, unsigned short)
-__ckd_declare_sub(__ckd_sub_sint, signed int)
-__ckd_declare_sub(__ckd_sub_uint, unsigned int)
-__ckd_declare_sub(__ckd_sub_slong, signed long)
-__ckd_declare_sub(__ckd_sub_ulong, unsigned long)
-__ckd_declare_sub(__ckd_sub_slonger, signed long long)
-__ckd_declare_sub(__ckd_sub_ulonger, unsigned long long)
-#ifdef __ckd_have_int128
-__ckd_declare_sub(__ckd_sub_sint128, signed __int128)
-__ckd_declare_sub(__ckd_sub_uint128, unsigned __int128)
-#endif
-
-#define __ckd_declare_mul(S, T)                                 \
-  __ckd_inline char S(void *__res,                              \
-                      __ckd_uintmax_t __x,                      \
-                      __ckd_uintmax_t __y,                      \
-                      char __a_signed,                          \
-                      char __b_signed) {                        \
-    switch (__ckd_is_signed((T)0) << 2 |                        \
-            __a_signed << 1 | __b_signed) {                     \
-      case 0: {  /* u = u * u */                                \
-        __ckd_uintmax_t __z = __x * __y;                        \
-        int __o = __x && __z / __x != __y;                      \
-        *(T *)__res = __z;                                      \
-        return __o | (sizeof(T) < sizeof(__z) &&                \
-                      __z != (__ckd_uintmax_t)*(T *)__res);     \
-      }                                                         \
-      case 1: {  /* u = u * s */                                \
-        __ckd_uintmax_t __z = __x * __y;                        \
-        int __o = __x && __z / __x != __y;                      \
-        *(T *)__res = __z;                                      \
-        return (__o | (((__ckd_intmax_t)__y < 0) & !!__x) |     \
-                (sizeof(T) < sizeof(__z) &&                     \
-                 __z != (__ckd_uintmax_t)*(T *)__res));         \
-      }                                                         \
-      case 2: {  /* u = s * u */                                \
-        __ckd_uintmax_t __z = __x * __y;                        \
-        int __o = __x && __z / __x != __y;                      \
-        *(T *)__res = __z;                                      \
-        return (__o | (((__ckd_intmax_t)__x < 0) & !!__y) |     \
-                (sizeof(T) < sizeof(__z) &&                     \
-                 __z != (__ckd_uintmax_t)*(T *)__res));         \
-      }                                                         \
-      case 3: {  /* u = s * s */                                \
-        int __o = 0;                                            \
-        if ((__ckd_intmax_t)(__x & __y) < 0) {                  \
-          __x = -__x;                                           \
-          __y = -__y;                                           \
-        } else if ((__ckd_intmax_t)(__x ^ __y) < 0) {           \
-          __o = __x && __y;                                     \
-        }                                                       \
-        __ckd_uintmax_t __z = __x * __y;                        \
-        __o |= __x && __z / __x != __y;                         \
-        *(T *)__res = __z;                                      \
-        return __o | (sizeof(T) < sizeof(__z) &&                \
-                      __z != (__ckd_uintmax_t)*(T *)__res);     \
-      }                                                         \
-      case 4: {  /* s = u * u */                                \
-        __ckd_uintmax_t __z = __x * __y;                        \
-        int __o = __x && __z / __x != __y;                      \
-        *(T *)__res = __z;                                      \
-        return (__o | ((__ckd_intmax_t)(__z) < 0) |             \
-                (sizeof(T) < sizeof(__z) &&                     \
-                 __z != (__ckd_uintmax_t)*(T *)__res));         \
-      }                                                         \
-      case 5: {  /* s = u * s */                                \
-        __ckd_uintmax_t __t = -__y;                             \
-        __t = (__ckd_intmax_t)(__t) < 0 ? __y : __t;            \
-        __ckd_uintmax_t __p = __t * __x;                        \
-        int __o = __t && __p / __t != __x;                      \
-        int __n = (__ckd_intmax_t)__y < 0;                      \
-        __ckd_uintmax_t __z = __n ? -__p : __p;                 \
-        *(T *)__res = __z;                                      \
-        __ckd_uintmax_t __m = __ckd_sign(__ckd_uintmax_t) - 1;  \
-        return (__o | (__p > __m + __n) |                       \
-                (sizeof(T) < sizeof(__z) &&                     \
-                 __z != (__ckd_uintmax_t)*(T *)__res));         \
-      }                                                         \
-      case 6: {  /* s = s * u */                                \
-        __ckd_uintmax_t __t = -__x;                             \
-        __t = (__ckd_intmax_t)(__t) < 0 ? __x : __t;            \
-        __ckd_uintmax_t __p = __t * __y;                        \
-        int __o = __t && __p / __t != __y;                      \
-        int __n = (__ckd_intmax_t)__x < 0;                      \
-        __ckd_uintmax_t __z = __n ? -__p : __p;                 \
-        *(T *)__res = __z;                                      \
-        __ckd_uintmax_t __m = __ckd_sign(__ckd_uintmax_t) - 1;  \
-        return (__o | (__p > __m + __n) |                       \
-                (sizeof(T) < sizeof(__z) &&                     \
-                 __z != (__ckd_uintmax_t)*(T *)__res));         \
-      }                                                         \
-      case 7: {  /* s = s * s */                                \
-        __ckd_uintmax_t __z = __x * __y;                        \
-        *(T *)__res = __z;                                      \
-        return (((((__ckd_intmax_t)__y < 0) &&                  \
-                  (__x == __ckd_sign(__ckd_uintmax_t))) ||      \
-                 (__y && (((__ckd_intmax_t)__z /                \
-                           (__ckd_intmax_t)__y) !=              \
-                          (__ckd_intmax_t)__x))) |              \
-                (sizeof(T) < sizeof(__z) &&                     \
-                 __z != (__ckd_uintmax_t)*(T *)__res));         \
-      }                                                         \
-      default:                                                  \
-        for (;;) (void)0;                                       \
-    }                                                           \
-  }
-
-__ckd_declare_mul(__ckd_mul_schar, signed char)
-__ckd_declare_mul(__ckd_mul_uchar, unsigned char)
-__ckd_declare_mul(__ckd_mul_sshort, signed short)
-__ckd_declare_mul(__ckd_mul_ushort, unsigned short)
-__ckd_declare_mul(__ckd_mul_sint, signed int)
-__ckd_declare_mul(__ckd_mul_uint, unsigned int)
-__ckd_declare_mul(__ckd_mul_slong, signed long)
-__ckd_declare_mul(__ckd_mul_ulong, unsigned long)
-__ckd_declare_mul(__ckd_mul_slonger, signed long long)
-__ckd_declare_mul(__ckd_mul_ulonger, unsigned long long)
-#ifdef __ckd_have_int128
-__ckd_declare_mul(__ckd_mul_sint128, signed __int128)
-__ckd_declare_mul(__ckd_mul_uint128, unsigned __int128)
-#endif
-
-#else
-#pragma message "checked integer arithmetic unsupported in this environment"
-
-#define ckd_add(res, x, y) (*(res) = (x) + (y), 0)
-#define ckd_sub(res, x, y) (*(res) = (x) - (y), 0)
-#define ckd_mul(res, x, y) (*(res) = (x) * (y), 0)
-
-#endif /* GNU */
+#  endif /* GNU */
 #endif /* stdckdint.h */
 #endif /* JTCKDINT_H_ */
