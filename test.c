@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "jtckdint.h"
 
@@ -88,77 +89,130 @@ DECLARE_TEST_VECTORS(uint128_t);
 #endif
 
 static FILE* reference;
+static unsigned char ref;
+static size_t size;
+static _Alignas(16) unsigned char buffer[16];
+static long offset;
 
-int main(int argc, char const* argv[])
+static void byte_swap(void)
 {
+  short test = 1;
+  unsigned char byte;
+  memcpy(&byte, &test, 1);
+  if (byte == 0) {
+    return;
+  }
+
+  {
+    int begin = 0;
+    int end = (int)size;
+    while (--end > begin) {
+      unsigned char tmp = buffer[begin];
+      buffer[begin++] = buffer[end];
+      buffer[end] = tmp;
+    }
+  }
+}
+
+#define STRINGIFY_BUFFER 50
+
+#define DECLARE_MISMATCH(T) \
+  static int stringify_##T(T x, char* c) \
+  { \
+    int const s = x < 0 ? -1 : 1; \
+    int i = STRINGIFY_BUFFER; \
+    c[--i] = 0; \
+    do { \
+      T tmp = x % 10; \
+      c[--i] = '0' + (char)(s == -1 ? -tmp : tmp); \
+      x /= 10; \
+    } while (x != 0); \
+    if (s == -1) { \
+      c[--i] = '-'; \
+    } \
+    return i; \
+  } \
+  static int mismatch_##T(int o1, T z1) \
+  { \
+    char c1[STRINGIFY_BUFFER]; \
+    char c2[STRINGIFY_BUFFER]; \
+    T z2; \
+    byte_swap(); \
+    memcpy(&z2, buffer, size); \
+    if (o1 == ((ref & 0x40) != 0) && z1 == z2) { \
+      return 0; \
+    } \
+    assert(!(fprintf(stderr, \
+                     "Mismatch @ 0x%lX: (%c) %s != (%c) %s\n", \
+                     offset, \
+                     '0' + o1, \
+                     c1 + stringify_##T(z1, c1), \
+                     '0' + ((ref & 0x40) != 0), \
+                     c2 + stringify_##T(z2, c2)) \
+             < 0)); \
+    return 1; \
+  }
+
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable : 4296; disable : 4146)
+#endif
+DECLARE_MISMATCH(int8_t)
+DECLARE_MISMATCH(uint8_t)
+DECLARE_MISMATCH(int16_t)
+DECLARE_MISMATCH(uint16_t)
+DECLARE_MISMATCH(int32_t)
+DECLARE_MISMATCH(uint32_t)
+DECLARE_MISMATCH(int64_t)
+DECLARE_MISMATCH(uint64_t)
+#ifdef ckd_have_int128
+DECLARE_MISMATCH(int128_t)
+DECLARE_MISMATCH(uint128_t)
+#endif
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
+
+#ifdef ckd_have_int128
+static void read_ref(void)
+{
+  offset = ftell(reference);
+  assert(fread(&ref, 1, 1, reference) == 1);
+  size = ref & 0x3F;
+  assert(fread(buffer, 1, size, reference) == size);
+}
+#else
+static void read_ref(void)
+{
+  offset = ftell(reference);
+  while (1) {
+    assert(fread(&ref, 1, 1, reference) == 1);
+    size = ref & 0x3F;
+    if ((ref & 0x80) == 0) {
+      assert(fread(buffer, 1, size, reference) == size);
+      return;
+    }
+    assert(!fseek(reference, (long)size, SEEK_CUR));
+    offset += 1 + (long)size;
+  }
+}
+#endif
+
+int main(int argc, char* argv[])
+{
+  int o;
+
   (void)argc;
   (void)argv;
 
   reference = fopen("test.bin", "rb");
   assert(reference);
 
-#ifdef ckd_have_int128
-#  define read() \
-    do { \
-      assert(fread(&ref, 1, 1, reference) == 1); \
-      size = ref & 0x3F; \
-      assert(fread(&buffer, 1, size, reference) == size); \
-    } while (0)
-#else
-#  define read() \
-    do { \
-      assert(fread(&ref, 1, 1, reference) == 1); \
-      size = ref & 0x3F; \
-      if ((ref & 0x80) == 0) { \
-        assert(fread(&buffer, 1, size, reference) == size); \
-        break; \
-      } \
-      assert(!fseek(reference, (long)size, SEEK_CUR)); \
-      offset += 1 + (long)size; \
-    } while (1)
-#endif
-
-#define stringify(N) \
+#define check_next(T, op) \
   do { \
-    int s = z##N < 0 ? -1 : 1; \
-    i##N = sizeof(c##N); \
-    c##N[--i##N] = 0; \
-    do { \
-      c##N[--i##N] = '0' + (char)(s * (z##N % 10)); \
-      z##N /= 10; \
-    } while (z##N != 0); \
-    if (s == -1) { \
-      c##N[--i##N] = '-'; \
-    } \
-  } while (0)
-
-#define check_next(expr) \
-  do { \
-    int o1, o2; \
-    size_t size = 0, index = 0; \
-    unsigned char buffer[16]; \
-    unsigned char ref = 0; \
-    long offset = ftell(reference); \
-    read(); \
-    z2 = buffer[index++]; \
-    while (index != size) { \
-      z2 = (z2 << 8) | buffer[index++]; \
-    } \
-    o1 = !!(expr); \
-    o2 = (ref & 0x40) != 0; \
-    if (o1 != o2 || z1 != z2) { \
-      char c1[50], c2[50]; \
-      int i1, i2; \
-      stringify(1); \
-      stringify(2); \
-      assert(!(fprintf(stderr, \
-                       "Mismatch @ 0x%lX: (%c) %s != (%c) %s\n", \
-                       offset, \
-                       '0' + o1, \
-                       c1 + i1, \
-                       '0' + o2, \
-                       c2 + i2) \
-               < 0)); \
+    read_ref(); \
+    o = op(&z, x, y); \
+    if (mismatch_##T(o, z)) { \
       return 1; \
     } \
   } while (0)
@@ -167,11 +221,11 @@ int main(int argc, char const* argv[])
   for (int i = 0; i != (int)(sizeof(k##U) / sizeof(k##U[0])); ++i) { \
     U x = k##U[i]; \
     for (int j = 0; j != (int)(sizeof(k##V) / sizeof(k##V[0])); ++j) { \
-      T z1, z2; \
+      T z; \
       V y = k##V[j]; \
-      check_next(ckd_add(&z1, x, y)); \
-      check_next(ckd_sub(&z1, x, y)); \
-      check_next(ckd_mul(&z1, x, y)); \
+      check_next(T, ckd_add); \
+      check_next(T, ckd_sub); \
+      check_next(T, ckd_mul); \
     } \
   }
 
@@ -237,7 +291,6 @@ int main(int argc, char const* argv[])
   MMM(int32_t)
   MMM(int64_t)
   while (1) {
-    unsigned char ref = 0;
     if (fread(&ref, 1, 1, reference) != 1) {
       break;
     }
