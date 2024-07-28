@@ -156,8 +156,11 @@ typedef unsigned ckd_intmax ckd_uintmax_t;
           unsigned long: ckd_##op##_ulong, \
           signed long long: ckd_##op##_slonger, \
           unsigned long long: ckd_##op##_ulonger ckd_generic_int128( \
-              ckd_##op##_sint128, ckd_##op##_uint128))( \
-          res, a, b, ckd_is_signed(a), ckd_is_signed(b)))
+              ckd_##op##_sint128, ckd_##op##_uint128))(res, \
+                                                       (ckd_uintmax_t)(a), \
+                                                       (ckd_uintmax_t)(b), \
+                                                       ckd_is_signed(a), \
+                                                       ckd_is_signed(b)))
 
 #    define ckd_declare_add(S, T) \
       ckd_inline char S(void* res, \
@@ -174,28 +177,33 @@ typedef unsigned ckd_intmax ckd_uintmax_t;
         } \
         switch (ckd_is_signed((T)0) << 2 | a_signed << 1 | b_signed) { \
           case 0: /* u = u + u */ \
-            return truncated | (z < x); \
+            return (char)(truncated | (z < x)); \
           case 1: /* u = u + s */ \
             y ^= ckd_sign(ckd_uintmax_t); \
-            return truncated | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0); \
+            return (char)(truncated \
+                          | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0)); \
           case 2: /* u = s + u */ \
             x ^= ckd_sign(ckd_uintmax_t); \
-            return truncated | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0); \
+            return (char)(truncated \
+                          | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0)); \
           case 3: /* u = s + s */ \
-            return truncated \
-                | ((ckd_intmax_t)(((z | x) & y) | ((z & x) & ~y)) < 0); \
+            return ( \
+                char)(truncated \
+                      | ((ckd_intmax_t)(((z | x) & y) | ((z & x) & ~y)) < 0)); \
           case 4: /* s = u + u */ \
-            return truncated | (z < x) | ((ckd_intmax_t)z < 0); \
+            return (char)(truncated | (z < x) | ((ckd_intmax_t)z < 0)); \
           case 5: /* s = u + s */ \
             y ^= ckd_sign(ckd_uintmax_t); \
-            return truncated | (x + y < y); \
+            return (char)(truncated | (x + y < y)); \
           case 6: /* s = s + u */ \
             x ^= ckd_sign(ckd_uintmax_t); \
-            return truncated | (x + y < x); \
+            return (char)(truncated | (x + y < x)); \
           case 7: /* s = s + s */ \
-            return truncated | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0); \
+            return (char)(truncated \
+                          | ((ckd_intmax_t)((z ^ x) & (z ^ y)) < 0)); \
+          default: \
+            ckd_unreachable(0); \
         } \
-        ckd_unreachable(0); \
       }
 
 /* clang-format off */
@@ -230,27 +238,31 @@ ckd_declare_add(ckd_add_uint128, unsigned __int128)
         } \
         switch (ckd_is_signed((T)0) << 2 | a_signed << 1 | b_signed) { \
           case 0: /* u = u - u */ \
-            return truncated | (x < y); \
+            return (char)(truncated | (x < y)); \
           case 1: /* u = u - s */ \
             y ^= ckd_sign(ckd_uintmax_t); \
-            return truncated | ((ckd_intmax_t)((x ^ y) & (z ^ x)) < 0); \
+            return (char)(truncated \
+                          | ((ckd_intmax_t)((x ^ y) & (z ^ x)) < 0)); \
           case 2: /* u = s - u */ \
-            return truncated | (y > x) | ((ckd_intmax_t)x < 0); \
+            return (char)(truncated | (y > x) | ((ckd_intmax_t)x < 0)); \
           case 3: /* u = s - s */ \
-            return truncated \
-                | ((ckd_intmax_t)(((z & x) & y) | ((z | x) & ~y)) < 0); \
+            return ( \
+                char)(truncated \
+                      | ((ckd_intmax_t)(((z & x) & y) | ((z | x) & ~y)) < 0)); \
           case 4: /* s = u - u */ \
-            return truncated | ((x < y) ^ ((ckd_intmax_t)z < 0)); \
+            return (char)(truncated | ((x < y) ^ ((ckd_intmax_t)z < 0))); \
           case 5: /* s = u - s */ \
             y ^= ckd_sign(ckd_uintmax_t); \
-            return truncated | (x >= y); \
+            return (char)(truncated | (x >= y)); \
           case 6: /* s = s - u */ \
             x ^= ckd_sign(ckd_uintmax_t); \
-            return truncated | (x < y); \
+            return (char)(truncated | (x < y)); \
           case 7: /* s = s - s */ \
-            return truncated | ((ckd_intmax_t)((x ^ y) & (z ^ x)) < 0); \
+            return (char)(truncated \
+                          | ((ckd_intmax_t)((x ^ y) & (z ^ x)) < 0)); \
+          default: \
+            ckd_unreachable(0); \
         } \
-        ckd_unreachable(0); \
       }
 
     /* clang-format off */
@@ -282,24 +294,25 @@ ckd_declare_sub(ckd_sub_uint128, unsigned __int128)
             ckd_uintmax_t z = x * y; \
             int o = x && z / x != y; \
             *(T*)res = (T)z; \
-            return o \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res); \
+            return (char)(o \
+                          | (sizeof(T) < sizeof(z) \
+                             && z != (ckd_uintmax_t) * (T*)res)); \
           } \
           case 1: { /* u = u * s */ \
             ckd_uintmax_t z = x * y; \
             int o = x && z / x != y; \
             *(T*)res = (T)z; \
-            return ( \
+            return (char)(( \
                 o | (((ckd_intmax_t)y < 0) & !!x) \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res))); \
           } \
           case 2: { /* u = s * u */ \
             ckd_uintmax_t z = x * y; \
             int o = x && z / x != y; \
             *(T*)res = (T)z; \
-            return ( \
+            return (char)(( \
                 o | (((ckd_intmax_t)x < 0) & !!y) \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res))); \
           } \
           case 3: { /* u = s * s */ \
             int o = 0; \
@@ -312,16 +325,17 @@ ckd_declare_sub(ckd_sub_uint128, unsigned __int128)
             ckd_uintmax_t z = x * y; \
             o |= x && z / x != y; \
             *(T*)res = (T)z; \
-            return o \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res); \
+            return (char)(o \
+                          | (sizeof(T) < sizeof(z) \
+                             && z != (ckd_uintmax_t) * (T*)res)); \
           } \
           case 4: { /* s = u * u */ \
             ckd_uintmax_t z = x * y; \
             int o = x && z / x != y; \
             *(T*)res = (T)z; \
-            return ( \
+            return (char)(( \
                 o | ((ckd_intmax_t)(z) < 0) \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res))); \
           } \
           case 5: { /* s = u * s */ \
             ckd_uintmax_t t = -y; \
@@ -332,9 +346,9 @@ ckd_declare_sub(ckd_sub_uint128, unsigned __int128)
             ckd_uintmax_t z = n ? -p : p; \
             *(T*)res = (T)z; \
             ckd_uintmax_t m = ckd_sign(ckd_uintmax_t) - 1; \
-            return ( \
-                o | (p > m + n) \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+            return (char)(( \
+                o | (p > m + (ckd_uintmax_t)n) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res))); \
           } \
           case 6: { /* s = s * u */ \
             ckd_uintmax_t t = -x; \
@@ -345,22 +359,23 @@ ckd_declare_sub(ckd_sub_uint128, unsigned __int128)
             ckd_uintmax_t z = n ? -p : p; \
             *(T*)res = (T)z; \
             ckd_uintmax_t m = ckd_sign(ckd_uintmax_t) - 1; \
-            return ( \
-                o | (p > m + n) \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+            return (char)(( \
+                o | (p > m + (ckd_uintmax_t)n) \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res))); \
           } \
           case 7: { /* s = s * s */ \
             ckd_uintmax_t z = x * y; \
             *(T*)res = (T)z; \
-            return ( \
+            return (char)(( \
                 ((((ckd_intmax_t)y < 0) && (x == ckd_sign(ckd_uintmax_t))) \
                  || (y \
                      && (((ckd_intmax_t)z / (ckd_intmax_t)y) \
                          != (ckd_intmax_t)x))) \
-                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res)); \
+                | (sizeof(T) < sizeof(z) && z != (ckd_uintmax_t) * (T*)res))); \
           } \
+          default: \
+            ckd_unreachable(0); \
         } \
-        ckd_unreachable(0); \
       }
 
     /* clang-format off */
@@ -381,7 +396,8 @@ ckd_declare_mul(ckd_mul_uint128, unsigned __int128)
 /* clang-format on */
 
 #  else
-#    pragma message("checked integer arithmetic unsupported in this environment")
+#    pragma message( \
+        "checked integer arithmetic unsupported in this environment")
 
 #    define ckd_add(res, x, y) (*(res) = (x) + (y), 0)
 #    define ckd_sub(res, x, y) (*(res) = (x) - (y), 0)
