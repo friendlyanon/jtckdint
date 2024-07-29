@@ -17,7 +17,6 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "jtckdint.h"
 
@@ -94,36 +93,37 @@ static size_t size;
 static _Alignas(16) unsigned char buffer[16];
 static long offset;
 
-static void byte_swap(void)
-{
-  short test = 1;
-  unsigned char byte;
-  memcpy(&byte, &test, 1);
-  if (byte == 0) {
-    return;
-  }
+typedef uint8_t tmp_8;
+typedef uint16_t tmp_16;
+typedef uint32_t tmp_32;
+typedef uint64_t tmp_64;
+#ifdef ckd_have_int128
+typedef uint128_t tmp_128;
+#endif
 
-  {
-    int begin = 0;
-    int end = (int)size;
-    while (--end > begin) {
-      unsigned char tmp = buffer[begin];
-      buffer[begin++] = buffer[end];
-      buffer[end] = tmp;
-    }
-  }
-}
+#define read_8() ((tmp_8)buffer[0])
+#define read_16() (((tmp_16)buffer[0] << 8) | (tmp_16)buffer[1])
+#define read_32_(b) \
+  (((tmp_32)buffer[(b) * 4] << 24) | ((tmp_32)buffer[(b) * 4 + 1] << 16) \
+   | ((tmp_32)buffer[(b) * 4 + 2] << 8) | (tmp_32)buffer[(b) * 4 + 3])
+#define read_32() read_32_(0)
+#define read_64_(b) \
+  (((tmp_64)read_32_((b) * 2) << 32) | (tmp_64)read_32_((b) * 2 + 1))
+#define read_64() read_64_(0)
+#ifdef ckd_have_int128
+#  define read_128() (((tmp_128)read_64_(0) << 64) | (tmp_128)read_64_(1))
+#endif
 
 #define STRINGIFY_BUFFER 50
 
-#define DECLARE_MISMATCH(T) \
-  static int stringify_##T(T x, char* c) \
+#define DECLARE_MISMATCH(S, N) \
+  static int stringify_##S##int##N##_t(S##int##N##_t x, char* c) \
   { \
     int const s = x < 0 ? -1 : 1; \
     int i = STRINGIFY_BUFFER; \
     c[--i] = 0; \
     do { \
-      T tmp = x % 10; \
+      S##int##N##_t tmp = x % 10; \
       c[--i] = '0' + (char)(s == -1 ? -tmp : tmp); \
       x /= 10; \
     } while (x != 0); \
@@ -132,13 +132,11 @@ static void byte_swap(void)
     } \
     return i; \
   } \
-  static int mismatch_##T(int o1, T z1) \
+  static int mismatch_##S##int##N##_t(int o1, S##int##N##_t z1) \
   { \
     char c1[STRINGIFY_BUFFER]; \
     char c2[STRINGIFY_BUFFER]; \
-    T z2; \
-    byte_swap(); \
-    memcpy(&z2, buffer, size); \
+    S##int##N##_t z2 = (S##int##N##_t)read_##N(); \
     if (o1 == ((ref & 0x40) != 0) && z1 == z2) { \
       return 0; \
     } \
@@ -146,9 +144,9 @@ static void byte_swap(void)
                      "Mismatch @ 0x%lX: (%c) %s != (%c) %s\n", \
                      offset, \
                      '0' + o1, \
-                     c1 + stringify_##T(z1, c1), \
+                     c1 + stringify_##S##int##N##_t(z1, c1), \
                      '0' + ((ref & 0x40) != 0), \
-                     c2 + stringify_##T(z2, c2)) \
+                     c2 + stringify_##S##int##N##_t(z2, c2)) \
              < 0)); \
     return 1; \
   }
@@ -157,24 +155,24 @@ static void byte_swap(void)
 #  pragma warning(push)
 #  pragma warning(disable : 4296; disable : 4146)
 #endif
-DECLARE_MISMATCH(int8_t)
-DECLARE_MISMATCH(uint8_t)
-DECLARE_MISMATCH(int16_t)
-DECLARE_MISMATCH(uint16_t)
-DECLARE_MISMATCH(int32_t)
-DECLARE_MISMATCH(uint32_t)
-DECLARE_MISMATCH(int64_t)
-DECLARE_MISMATCH(uint64_t)
+DECLARE_MISMATCH(, 8)
+DECLARE_MISMATCH(u, 8)
+DECLARE_MISMATCH(, 16)
+DECLARE_MISMATCH(u, 16)
+DECLARE_MISMATCH(, 32)
+DECLARE_MISMATCH(u, 32)
+DECLARE_MISMATCH(, 64)
+DECLARE_MISMATCH(u, 64)
 #ifdef ckd_have_int128
-DECLARE_MISMATCH(int128_t)
-DECLARE_MISMATCH(uint128_t)
+DECLARE_MISMATCH(, 128)
+DECLARE_MISMATCH(u, 128)
 #endif
 #ifdef _MSC_VER
 #  pragma warning(pop)
 #endif
 
 #ifdef ckd_have_int128
-static void read_ref(void)
+static void read_next(void)
 {
   offset = ftell(reference);
   assert(fread(&ref, 1, 1, reference) == 1);
@@ -182,7 +180,7 @@ static void read_ref(void)
   assert(fread(buffer, 1, size, reference) == size);
 }
 #else
-static void read_ref(void)
+static void read_next(void)
 {
   offset = ftell(reference);
   while (1) {
@@ -210,7 +208,7 @@ int main(int argc, char* argv[])
 
 #define check_next(T, op) \
   do { \
-    read_ref(); \
+    read_next(); \
     o = op(&z, x, y); \
     if (mismatch_##T(o, z)) { \
       return 1; \

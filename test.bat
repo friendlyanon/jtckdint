@@ -15,7 +15,7 @@ exit /b %errorlevel%
 setlocal
 call :%jtckdint_build_mode%
 set code=%errorlevel%
-if not %code% == 0 echo ! Exited with code: %code%>&2
+if not %code% == 0 echo ! Exited with code: [%code%]>&2
 endlocal & exit /b %code%
 
 :self
