@@ -316,11 +316,9 @@ int main(int argc, char* argv[])
     long end = 0;
     assert(!fseek(reference, 0, SEEK_END));
     end = ftell(reference);
-    assert(!(fprintf(stderr,
-                     "Reference was not read to completion. "
-                     "%ld bytes left.\n",
-                     end - current)
-             < 0));
+#define msg "Reference was not read to completion. %ld bytes left.\n"
+    assert(!(fprintf(stderr, msg, end - current) < 0));
+#undef msg
     return 1;
   }
 
