@@ -116,38 +116,52 @@ typedef uint128_t tmp_128;
 
 #define STRINGIFY_BUFFER 50
 
+static char c1[STRINGIFY_BUFFER];
+static char c2[STRINGIFY_BUFFER];
+
+static void report_mismatch(char o1, char o2, int i1, int i2)
+{
+#define msg "Mismatch @ 0x%lX: (%c) %s != (%c) %s\n"
+  assert(!(fprintf(stderr, msg, offset, '0' + o1, c1 + i1, '0' + o2, c2 + i2)
+           < 0));
+#undef msg
+}
+
+#define SIGNED_int 1
+#define SIGNED_uint 0
+
+#define XCAT(x, y) x##y
+#define CAT(x, y) XCAT(x, y)
+#define IF(c) CAT(IF_, c)
+#define IF_0(t, ...) __VA_ARGS__
+#define IF_1(t, ...) t
+#define EAT(...)
+#define EXPAND(...) __VA_ARGS__
+#define WHEN(c) IF(c)(EXPAND, EAT)
+
 #define DECLARE_MISMATCH(S, N) \
-  static int stringify_##S##int##N##_t(S##int##N##_t x, char* c) \
+  static int stringify_##S##N##_t(S##N##_t x, char* c) \
   { \
-    int const s = x < 0 ? -1 : 1; \
     int i = STRINGIFY_BUFFER; \
+    WHEN(SIGNED_##S)(int const s = x < 0 ? -1 : 1); \
     c[--i] = 0; \
     do { \
-      S##int##N##_t tmp = x % 10; \
-      c[--i] = '0' + (char)(s == -1 ? -tmp : tmp); \
+      S##N##_t tmp = x % 10; \
+      c[--i] = '0' + (char)(WHEN(SIGNED_##S)(s == -1 ? -tmp :) tmp); \
       x /= 10; \
     } while (x != 0); \
-    if (s == -1) { \
-      c[--i] = '-'; \
-    } \
+    WHEN(SIGNED_##S)(if (s != 1) c[--i] = '-'); \
     return i; \
   } \
-  static int mismatch_##S##int##N##_t(int o1, S##int##N##_t z1) \
+  static char mismatch_##S##N##_t(char o1, S##N##_t z1) \
   { \
-    char c1[STRINGIFY_BUFFER]; \
-    char c2[STRINGIFY_BUFFER]; \
-    S##int##N##_t z2 = (S##int##N##_t)read_##N(); \
-    if (o1 == ((ref & 0x40) != 0) && z1 == z2) { \
+    char o2 = (ref & 0x40) != 0; \
+    S##N##_t z2 = (S##N##_t)read_##N(); \
+    if (o1 == o2 && z1 == z2) { \
       return 0; \
     } \
-    assert(!(fprintf(stderr, \
-                     "Mismatch @ 0x%lX: (%c) %s != (%c) %s\n", \
-                     offset, \
-                     '0' + o1, \
-                     c1 + stringify_##S##int##N##_t(z1, c1), \
-                     '0' + ((ref & 0x40) != 0), \
-                     c2 + stringify_##S##int##N##_t(z2, c2)) \
-             < 0)); \
+    report_mismatch( \
+        o1, o2, stringify_##S##N##_t(z1, c1), stringify_##S##N##_t(z2, c2)); \
     return 1; \
   }
 
@@ -155,17 +169,17 @@ typedef uint128_t tmp_128;
 #  pragma warning(push)
 #  pragma warning(disable : 4296; disable : 4146)
 #endif
-DECLARE_MISMATCH(, 8)
-DECLARE_MISMATCH(u, 8)
-DECLARE_MISMATCH(, 16)
-DECLARE_MISMATCH(u, 16)
-DECLARE_MISMATCH(, 32)
-DECLARE_MISMATCH(u, 32)
-DECLARE_MISMATCH(, 64)
-DECLARE_MISMATCH(u, 64)
+DECLARE_MISMATCH(int, 8)
+DECLARE_MISMATCH(uint, 8)
+DECLARE_MISMATCH(int, 16)
+DECLARE_MISMATCH(uint, 16)
+DECLARE_MISMATCH(int, 32)
+DECLARE_MISMATCH(uint, 32)
+DECLARE_MISMATCH(int, 64)
+DECLARE_MISMATCH(uint, 64)
 #ifdef ckd_have_int128
-DECLARE_MISMATCH(, 128)
-DECLARE_MISMATCH(u, 128)
+DECLARE_MISMATCH(int, 128)
+DECLARE_MISMATCH(uint, 128)
 #endif
 #ifdef _MSC_VER
 #  pragma warning(pop)
@@ -198,7 +212,7 @@ static void read_next(void)
 
 int main(int argc, char* argv[])
 {
-  int o;
+  char o = 0;
 
   (void)argc;
   (void)argv;

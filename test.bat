@@ -33,7 +33,7 @@ setlocal
 call mingw.bat
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-set comp=gcc.exe -isystem . -Wall -Wextra -Wno-type-limits -Werror -o test.exe
+set comp=gcc.exe -isystem . -Wall -Wextra -Werror -o test.exe
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error
 if not %errorlevel% == 0 exit /b %errorlevel%
