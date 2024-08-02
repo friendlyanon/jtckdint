@@ -21,9 +21,9 @@
 #include "jtckdint.h"
 
 #define TBIT(T) (sizeof(T) * 8 - 1)
-#define TMIN(T) (((T) ~(T)0) > 1 ? (T)0 : (T)((ckd_uintmax_t)1 << TBIT(T)))
+#define TMIN(T) (((T) ~(T)0) > 1 ? (T)0 : (T)((ckd_uintmax)1 << TBIT(T)))
 #define TMAX(T) \
-  (((T) ~(T)0) > 1 ? (T) ~(T)0 : (T)(((ckd_uintmax_t)1 << TBIT(T)) - 1))
+  (((T) ~(T)0) > 1 ? (T) ~(T)0 : (T)(((ckd_uintmax)1 << TBIT(T)) - 1))
 
 #ifdef ckd_have_int128
 typedef signed __int128 int128_t;
