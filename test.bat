@@ -94,8 +94,8 @@ call :build /O2 /wd4710 /wd4711 /wd4883 /std:c11
 endlocal & exit /b %errorlevel%
 
 :build
-echo ^< %comp% %* test.c
-%comp% %* test.c
+echo ^< %comp% %* test.c other.c
+%comp% %* test.c other.c
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 echo ^> test.exe

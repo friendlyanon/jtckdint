@@ -115,6 +115,8 @@ typedef unsigned ckd_longest ckd_uintmax;
 #      define ckd_inline \
         extern __inline \
             __attribute__((__gnu_inline__, __always_inline__, __artificial__))
+#    elif defined(_MSC_VER)
+#      define ckd_inline static __forceinline
 #    else
 #      define ckd_inline static inline
 #    endif

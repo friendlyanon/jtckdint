@@ -210,12 +210,19 @@ static void read_next(void)
 }
 #endif
 
+char test_odr(int a, int b);
+
 int main(int argc, char* argv[])
 {
   char o = 0;
 
   (void)argc;
   (void)argv;
+
+  o = test_odr(1, -1);
+  if (!o) {
+    return 1;
+  }
 
   reference = fopen("test.bin", "rb");
   assert(reference);
