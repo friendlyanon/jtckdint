@@ -80,7 +80,7 @@ setlocal
 call vcvars.bat
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-set comp=cl.exe /nologo /Wall /WX /D_CRT_SECURE_NO_WARNINGS=1 /diagnostics:caret /external:I . /external:W0
+set comp=cl.exe /nologo /Wall /WX /D_CRT_SECURE_NO_WARNINGS=1 /diagnostics:caret /external:I . /external:W0 /permissive- /Zc:inline /Zc:preprocessor
 
 :: call :build /Od
 :: if not %errorlevel% == 0 exit /b %errorlevel%
