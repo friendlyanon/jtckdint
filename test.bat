@@ -24,6 +24,7 @@ set jtckdint_build_mode=%1
 call "%~f0"
 endlocal & set code=%errorlevel%
 for %%g in (o obj ilk pdb) do if exist test.%%g del test.%%g
+for %%g in (o obj ilk pdb) do if exist other.%%g del other.%%g
 if %code% == 0 if exist test.exe del test.exe
 exit /b %code%
 

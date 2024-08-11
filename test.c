@@ -92,6 +92,16 @@ static unsigned char ref;
 static size_t size;
 static _Alignas(16) unsigned char buffer[16];
 static long offset;
+static int i;
+static int j;
+static char const* t_type;
+static char const* u_type;
+static char const* v_type;
+static char const* op;
+static void* u_ptr;
+static int (*u_stringify)(void const*, char*);
+static void* v_ptr;
+static int (*v_stringify)(void const*, char*);
 
 typedef uint8_t tmp_8;
 typedef uint16_t tmp_16;
@@ -118,13 +128,19 @@ typedef uint128_t tmp_128;
 
 static char c1[STRINGIFY_BUFFER];
 static char c2[STRINGIFY_BUFFER];
+static char c3[STRINGIFY_BUFFER];
+static char c4[STRINGIFY_BUFFER];
 
-static void report_mismatch(char o1, char o2, int i1, int i2)
+static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
 {
-#define msg "Mismatch @ 0x%lX: (%c) %s != (%c) %s\n"
-  assert(!(fprintf(stderr, msg, offset, '0' + o1, c1 + i1, '0' + o2, c2 + i2)
-           < 0));
-#undef msg
+  char const* msg =
+      "Mismatch @ 0x%lX\n  Actual: (%c) %s\n  Expected: (%c) %s\n  Types: T = "
+      "%s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, "
+      "j = %d\n";
+#define args \
+  offset, '0' + o1, c1 + i1, '0' + o2, c2 + i2, t_type, u_type, v_type, op, \
+      c3 + i3, c4 + i4, i, j
+  assert(!(fprintf(stderr, msg, args) < 0));
 }
 
 #define SIGNED_int 1
@@ -140,18 +156,19 @@ static void report_mismatch(char o1, char o2, int i1, int i2)
 #define WHEN(c) IF(c)(EXPAND, EAT)
 
 #define DECLARE_MISMATCH(S, N) \
-  static int stringify_##S##N##_t(S##N##_t x, char* c) \
+  static int stringify_##S##N##_t(void const* x_, char* c) \
   { \
-    int i = STRINGIFY_BUFFER; \
+    S##N##_t x = *(S##N##_t const*)x_; \
+    int p = STRINGIFY_BUFFER; \
     WHEN(SIGNED_##S)(int const s = x < 0 ? -1 : 1); \
-    c[--i] = 0; \
+    c[--p] = 0; \
     do { \
       S##N##_t tmp = x % 10; \
-      c[--i] = '0' + (char)(WHEN(SIGNED_##S)(s == -1 ? -tmp :) tmp); \
+      c[--p] = '0' + (char)(WHEN(SIGNED_##S)(s == -1 ? -tmp :) tmp); \
       x /= 10; \
     } while (x != 0); \
-    WHEN(SIGNED_##S)(if (s != 1) c[--i] = '-'); \
-    return i; \
+    WHEN(SIGNED_##S)(if (s != 1) c[--p] = '-'); \
+    return p; \
   } \
   static char mismatch_##S##N##_t(char o1, S##N##_t z1) \
   { \
@@ -160,8 +177,12 @@ static void report_mismatch(char o1, char o2, int i1, int i2)
     if (o1 == o2 && z1 == z2) { \
       return 0; \
     } \
-    report_mismatch( \
-        o1, o2, stringify_##S##N##_t(z1, c1), stringify_##S##N##_t(z2, c2)); \
+    report_mismatch(o1, \
+                    o2, \
+                    stringify_##S##N##_t(&z1, c1), \
+                    stringify_##S##N##_t(&z2, c2), \
+                    u_stringify(u_ptr, c3), \
+                    v_stringify(v_ptr, c4)); \
     return 1; \
   }
 
@@ -227,21 +248,29 @@ int main(int argc, char* argv[])
   reference = fopen("test.bin", "rb");
   assert(reference);
 
-#define check_next(T, op) \
+#define check_next(T, f) \
   do { \
+    op = #f; \
     read_next(); \
-    o = op(&z, x, y); \
+    o = (char)(int)f(&z, x, y); \
     if (mismatch_##T(o, z)) { \
       return 1; \
     } \
   } while (0)
 
 #define M(T, U, V) \
-  for (int i = 0; i != (int)(sizeof(k##U) / sizeof(k##U[0])); ++i) { \
+  t_type = #T; \
+  u_type = #U; \
+  v_type = #V; \
+  for (i = 0; i != (int)(sizeof(k##U) / sizeof(k##U[0])); ++i) { \
     U x = k##U[i]; \
-    for (int j = 0; j != (int)(sizeof(k##V) / sizeof(k##V[0])); ++j) { \
+    u_ptr = &x; \
+    u_stringify = stringify_##U; \
+    for (j = 0; j != (int)(sizeof(k##V) / sizeof(k##V[0])); ++j) { \
       T z; \
       V y = k##V[j]; \
+      v_ptr = &y; \
+      v_stringify = stringify_##V; \
       check_next(T, ckd_add); \
       check_next(T, ckd_sub); \
       check_next(T, ckd_mul); \
