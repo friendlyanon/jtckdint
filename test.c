@@ -20,10 +20,23 @@
 
 #include "jtckdint.h"
 
-#define TBIT(T) (sizeof(T) * 8 - 1)
-#define TMIN(T) (((T) ~(T)0) > 1 ? (T)0 : (T)((ckd_uintmax)1 << TBIT(T)))
-#define TMAX(T) \
-  (((T) ~(T)0) > 1 ? (T) ~(T)0 : (T)(((ckd_uintmax)1 << TBIT(T)) - 1))
+#ifdef __cplusplus
+#  include <limits>
+#  define cast(T, x) (static_cast<T>(x))
+#  define TMIN(T) ((std::numeric_limits<T>::min)())
+#  define TMAX(T) ((std::numeric_limits<T>::max)())
+#else
+#  define cast(T, x) ((T)(x))
+#  define TBIT(T) (sizeof(T) * 8 - 1)
+#  define TMIN(T) \
+    (cast(T, ~cast(T, 0)) > 1 ? cast(T, 0) \
+                              : cast(T, cast(ckd_uintmax, 1) << TBIT(T)))
+#  define TMAX(T) \
+    (cast(T, ~cast(T, 0)) > 1 \
+         ? cast(T, ~cast(T, 0)) \
+         : cast(T, (cast(ckd_uintmax, 1) << TBIT(T)) - 1))
+#  define alignas(x) _Alignas(x)
+#endif
 
 #ifdef ckd_have_int128
 typedef signed __int128 int128_t;
@@ -39,32 +52,32 @@ typedef unsigned __int128 uint128_t;
       4, \
       5, \
       6, \
-      (T) - 1, \
-      (T) - 2, \
-      (T) - 3, \
-      (T) - 4, \
-      (T) - 5, \
-      (T) - 6, \
+      cast(T, -1), \
+      cast(T, -2), \
+      cast(T, -3), \
+      cast(T, -4), \
+      cast(T, -5), \
+      cast(T, -6), \
       TMIN(T), \
-      (T)(TMIN(T) + 1), \
-      (T)(TMIN(T) + 2), \
-      (T)(TMIN(T) + 3), \
-      (T)(TMIN(T) + 4), \
+      cast(T, TMIN(T) + 1), \
+      cast(T, TMIN(T) + 2), \
+      cast(T, TMIN(T) + 3), \
+      cast(T, TMIN(T) + 4), \
       TMAX(T), \
-      (T)(TMAX(T) - 1), \
-      (T)(TMAX(T) - 2), \
-      (T)(TMAX(T) - 3), \
-      (T)(TMAX(T) - 4), \
-      (T)(TMIN(T) / 2), \
-      (T)(TMIN(T) / 2 + 1), \
-      (T)(TMIN(T) / 2 + 2), \
-      (T)(TMIN(T) / 2 + 3), \
-      (T)(TMIN(T) / 2 + 4), \
-      (T)(TMAX(T) / 2), \
-      (T)(TMAX(T) / 2 - 1), \
-      (T)(TMAX(T) / 2 - 2), \
-      (T)(TMAX(T) / 2 - 3), \
-      (T)(TMAX(T) / 2 - 4), \
+      cast(T, TMAX(T) - 1), \
+      cast(T, TMAX(T) - 2), \
+      cast(T, TMAX(T) - 3), \
+      cast(T, TMAX(T) - 4), \
+      cast(T, TMIN(T) / 2), \
+      cast(T, TMIN(T) / 2 + 1), \
+      cast(T, TMIN(T) / 2 + 2), \
+      cast(T, TMIN(T) / 2 + 3), \
+      cast(T, TMIN(T) / 2 + 4), \
+      cast(T, TMAX(T) / 2), \
+      cast(T, TMAX(T) / 2 - 1), \
+      cast(T, TMAX(T) / 2 - 2), \
+      cast(T, TMAX(T) / 2 - 3), \
+      cast(T, TMAX(T) / 2 - 4), \
   }
 
 #ifdef _MSC_VER
@@ -90,7 +103,7 @@ DECLARE_TEST_VECTORS(uint128_t);
 static FILE* reference;
 static unsigned char ref;
 static size_t size;
-static _Alignas(16) unsigned char buffer[16];
+alignas(16) static unsigned char buffer[16];
 static long offset;
 static int i;
 static int j;
@@ -111,17 +124,21 @@ typedef uint64_t tmp_64;
 typedef uint128_t tmp_128;
 #endif
 
-#define read_8() ((tmp_8)buffer[0])
-#define read_16() (((tmp_16)buffer[0] << 8) | (tmp_16)buffer[1])
+#define read_8() (cast(tmp_8, buffer[0]))
+#define read_16() ((cast(tmp_16, buffer[0]) << 8) | cast(tmp_16, buffer[1]))
 #define read_32_(b) \
-  (((tmp_32)buffer[(b) * 4] << 24) | ((tmp_32)buffer[(b) * 4 + 1] << 16) \
-   | ((tmp_32)buffer[(b) * 4 + 2] << 8) | (tmp_32)buffer[(b) * 4 + 3])
+  ((cast(tmp_32, buffer[(b) * 4]) << 24) \
+   | (cast(tmp_32, buffer[(b) * 4 + 1]) << 16) \
+   | (cast(tmp_32, buffer[(b) * 4 + 2]) << 8) \
+   | cast(tmp_32, buffer[(b) * 4 + 3]))
 #define read_32() read_32_(0)
 #define read_64_(b) \
-  (((tmp_64)read_32_((b) * 2) << 32) | (tmp_64)read_32_((b) * 2 + 1))
+  ((cast(tmp_64, read_32_((b) * 2)) << 32) \
+   | cast(tmp_64, read_32_((b) * 2 + 1)))
 #define read_64() read_64_(0)
 #ifdef ckd_have_int128
-#  define read_128() (((tmp_128)read_64_(0) << 64) | (tmp_128)read_64_(1))
+#  define read_128() \
+    ((cast(tmp_128, read_64_(0)) << 64) | cast(tmp_128, read_64_(1)))
 #endif
 
 #define STRINGIFY_BUFFER 50
@@ -133,14 +150,16 @@ static char c4[STRINGIFY_BUFFER];
 
 static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
 {
-  char const* msg =
-      "Mismatch @ 0x%lX\n  Actual: (%c) %s\n  Expected: (%c) %s\n  Types: T = "
-      "%s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, "
-      "j = %d\n";
+#define msg \
+  "Mismatch @ 0x%lX\n  Actual: (%c) %s\n  Expected: (%c) %s\n  Types: T = " \
+  "%s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, " \
+  "j = %d\n"
 #define args \
   offset, '0' + o1, c1 + i1, '0' + o2, c2 + i2, t_type, u_type, v_type, op, \
       c3 + i3, c4 + i4, i, j
   assert(!(fprintf(stderr, msg, args) < 0));
+#undef args
+#undef msg
 }
 
 #define SIGNED_int 1
@@ -156,15 +175,16 @@ static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
 #define WHEN(c) IF(c)(EXPAND, EAT)
 
 #define DECLARE_MISMATCH(S, N) \
+  static char const* str_##S##N##_t = #S #N "_t"; \
   static int stringify_##S##N##_t(void const* x_, char* c) \
   { \
-    S##N##_t x = *(S##N##_t const*)x_; \
+    S##N##_t x = *cast(S##N##_t const*, x_); \
     int p = STRINGIFY_BUFFER; \
     WHEN(SIGNED_##S)(int const s = x < 0 ? -1 : 1); \
     c[--p] = 0; \
     do { \
-      S##N##_t tmp = x % 10; \
-      c[--p] = '0' + (char)(WHEN(SIGNED_##S)(s == -1 ? -tmp :) tmp); \
+      S##N##_t tmp = cast(S##N##_t, x % 10); \
+      c[--p] = '0' + cast(char, WHEN(SIGNED_##S)(s == -1 ? -tmp :) tmp); \
       x /= 10; \
     } while (x != 0); \
     WHEN(SIGNED_##S)(if (s != 1) c[--p] = '-'); \
@@ -173,7 +193,7 @@ static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
   static char mismatch_##S##N##_t(char o1, S##N##_t z1) \
   { \
     char o2 = (ref & 0x40) != 0; \
-    S##N##_t z2 = (S##N##_t)read_##N(); \
+    S##N##_t z2 = cast(S##N##_t, read_##N()); \
     if (o1 == o2 && z1 == z2) { \
       return 0; \
     } \
@@ -211,7 +231,7 @@ static void read_next(void)
 {
   offset = ftell(reference);
   assert(fread(&ref, 1, 1, reference) == 1);
-  size = ref & 0x3F;
+  size = cast(size_t, ref & 0x3F);
   assert(fread(buffer, 1, size, reference) == size);
 }
 #else
@@ -220,16 +240,20 @@ static void read_next(void)
   offset = ftell(reference);
   while (1) {
     assert(fread(&ref, 1, 1, reference) == 1);
-    size = ref & 0x3F;
+    size = cast(size_t, ref & 0x3F);
     if ((ref & 0x80) == 0) {
       assert(fread(buffer, 1, size, reference) == size);
       return;
     }
-    assert(!fseek(reference, (long)size, SEEK_CUR));
-    offset += 1 + (long)size;
+    assert(!fseek(reference, cast(long, size), SEEK_CUR));
+    offset += 1 + cast(long, size);
   }
 }
 #endif
+
+static char const* str_ckd_add = "ckd_add";
+static char const* str_ckd_sub = "ckd_sub";
+static char const* str_ckd_mul = "ckd_mul";
 
 char test_odr(int a, int b);
 
@@ -250,23 +274,21 @@ int main(int argc, char* argv[])
 
 #define check_next(T, f) \
   do { \
-    op = #f; \
+    op = str_##f; \
     read_next(); \
-    o = (char)(int)f(&z, x, y); \
+    o = cast(char, f(&z, x, y)); \
     if (mismatch_##T(o, z)) { \
       return 1; \
     } \
   } while (0)
 
 #define M(T, U, V) \
-  t_type = #T; \
-  u_type = #U; \
-  v_type = #V; \
-  for (i = 0; i != (int)(sizeof(k##U) / sizeof(k##U[0])); ++i) { \
+  v_type = str_##V; \
+  for (i = 0; i != cast(int, sizeof(k##U) / sizeof(k##U[0])); ++i) { \
     U x = k##U[i]; \
     u_ptr = &x; \
     u_stringify = stringify_##U; \
-    for (j = 0; j != (int)(sizeof(k##V) / sizeof(k##V[0])); ++j) { \
+    for (j = 0; j != cast(int, sizeof(k##V) / sizeof(k##V[0])); ++j) { \
       T z; \
       V y = k##V[j]; \
       v_ptr = &y; \
@@ -279,6 +301,7 @@ int main(int argc, char* argv[])
 
 #ifdef ckd_have_int128
 #  define MM(T, U) \
+    u_type = str_##U; \
     M(T, U, uint8_t) \
     M(T, U, uint16_t) \
     M(T, U, uint32_t) \
@@ -290,6 +313,7 @@ int main(int argc, char* argv[])
     M(T, U, int64_t) \
     M(T, U, int128_t)
 #  define MMM(T) \
+    t_type = str_##T; \
     MM(T, uint8_t) \
     MM(T, uint16_t) \
     MM(T, uint32_t) \
@@ -313,6 +337,7 @@ int main(int argc, char* argv[])
 
 #else
 #  define MM(T, U) \
+    u_type = str_##U; \
     M(T, U, uint8_t) \
     M(T, U, uint16_t) \
     M(T, U, uint32_t) \
@@ -322,6 +347,7 @@ int main(int argc, char* argv[])
     M(T, U, int32_t) \
     M(T, U, int64_t)
 #  define MMM(T) \
+    t_type = str_##T; \
     MM(T, uint8_t) \
     MM(T, uint16_t) \
     MM(T, uint32_t) \

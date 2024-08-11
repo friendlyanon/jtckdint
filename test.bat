@@ -49,6 +49,23 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -pedantic-errors -std=c11
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+set comp=g++.exe -isystem . -Wall -Wextra -Werror -o test.exe -x c++
+
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++11
+if not %errorlevel% == 0 exit /b %errorlevel%
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -pedantic-errors -std=c++14
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+call :build -O0 -std=c++11
+if not %errorlevel% == 0 exit /b %errorlevel%
+call :build -O0 -pedantic-errors -std=c++14
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+call :build -O3 -std=c++11
+if not %errorlevel% == 0 exit /b %errorlevel%
+call :build -O3 -pedantic-errors -std=c++14
 
 endlocal & exit /b %errorlevel%
 
@@ -72,6 +89,23 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -std=c11 -D__STRICT_ANSI__=1
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+set comp=clang++.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-c++98-compat -Wno-c++98-compat-pedantic -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe -x c++
+
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" -std=c++11 -D__STRICT_ANSI__=1
+if not %errorlevel% == 0 exit /b %errorlevel%
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 -D__STRICT_ANSI__=1
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+call :build -O0 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" -std=c++11 -D__STRICT_ANSI__=1
+if not %errorlevel% == 0 exit /b %errorlevel%
+call :build -O0 -std=c++14 -D__STRICT_ANSI__=1
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+call :build -O3 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" -std=c++11 -D__STRICT_ANSI__=1
+if not %errorlevel% == 0 exit /b %errorlevel%
+call :build -O3 -std=c++14 -D__STRICT_ANSI__=1
 
 endlocal & exit /b %errorlevel%
 
@@ -83,14 +117,18 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 
 set comp=cl.exe /nologo /Wall /WX /D_CRT_SECURE_NO_WARNINGS=1 /diagnostics:caret /external:I . /external:W0 /permissive- /Zc:inline /Zc:preprocessor
 
-:: call :build /Od
-:: if not %errorlevel% == 0 exit /b %errorlevel%
 call :build /Od /std:c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-:: call :build /O2
-:: if not %errorlevel% == 0 exit /b %errorlevel%
 call :build /O2 /wd4710 /wd4711 /wd4883 /std:c11
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+set comp=%comp% /EHsc /TP /Zc:__cplusplus
+
+call :build /Od
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+call :build /O2 /wd4710 /wd4711 /wd4883
 
 endlocal & exit /b %errorlevel%
 

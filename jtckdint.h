@@ -63,6 +63,12 @@
 #  define ckd_has_include(x) 0
 #endif
 
+#ifdef __has_feature
+#  define ckd_has_feature(x) __has_feature(x)
+#else
+#  define ckd_has_feature(x) 0
+#endif
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L \
     && ckd_has_include(<stdckdint.h>)
 #  include <stdckdint.h>
@@ -73,7 +79,8 @@
       && !defined(__STRICT_ANSI__)
 #    define ckd_have_int128
 #    define ckd_longest __int128
-#  elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#  elif (defined(__cplusplus) && __cplusplus >= 201103L) \
+      || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
 #    define ckd_longest long long
 #  else
 #    define ckd_longest long
@@ -88,6 +95,14 @@ typedef unsigned ckd_longest ckd_uintmax;
 #    define ckd_has_builtin(x) 0
 #  endif
 
+#  if defined(__GNUC__) || defined(__llvm__)
+#    define ckd_unreachable(x) __builtin_unreachable()
+#  elif defined(_MSC_VER)
+#    define ckd_unreachable(x) __assume(0)
+#  else
+#    define ckd_unreachable(x) return (x)
+#  endif
+
 #  if !defined(__STRICT_ANSI__) \
       && (defined(__GNUC__) && __GNUC__ >= 5 && !defined(__ICC) \
           || ckd_has_builtin(__builtin_add_overflow) \
@@ -97,15 +112,265 @@ typedef unsigned ckd_longest ckd_uintmax;
 #    define ckd_sub(res, x, y) __builtin_sub_overflow((x), (y), (res))
 #    define ckd_mul(res, x, y) __builtin_mul_overflow((x), (y), (res))
 
-#  elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#  elif defined(__cplusplus) \
+      && (__cplusplus >= 201103L \
+          || defined(_MSC_VER) && __cplusplus >= 199711L \
+              && ckd_has_include(<type_traits>) && ckd_has_include(<limits>))
+#    include <limits>
+#    include <type_traits>
 
 #    if defined(__GNUC__) || defined(__llvm__)
-#      define ckd_unreachable(x) __builtin_unreachable()
+#      define ckd_inline \
+        inline __attribute__((__always_inline__, __artificial__))
 #    elif defined(_MSC_VER)
-#      define ckd_unreachable(x) __assume(0)
+#      define ckd_inline __forceinline
 #    else
-#      define ckd_unreachable(x) return (x)
+#      define ckd_inline inline
 #    endif
+
+#    if (defined(_MSC_VER) && defined(_MSVC_LANG) && _MSC_VER >= 1915 \
+         && _MSVC_LANG >= 201402L) \
+        || (defined(__llvm__) && ckd_has_feature(__cxx_generic_lambdas__) \
+            && ckd_has_feature(__cxx_relaxed_constexpr__)) \
+        || (defined(__cpp_constexpr) && (__cpp_constexpr >= 201304L))
+#      define ckd_constexpr constexpr
+#    else
+#      define ckd_constexpr
+#    endif
+
+template<typename T, typename U, typename V>
+ckd_constexpr ckd_inline bool ckd_add(T* res, U a, V b)
+{
+  static_assert(std::is_integral<T>::value && std::is_integral<U>::value
+                    && std::is_integral<V>::value,
+                "non-integral types not allowed");
+  static_assert(!std::is_same<T, bool>::value && !std::is_same<U, bool>::value
+                    && !std::is_same<V, bool>::value,
+                "checked booleans not supported");
+  static_assert(!std::is_same<T, char>::value && !std::is_same<U, char>::value
+                    && !std::is_same<V, char>::value,
+                "unqualified char type is ambiguous");
+  auto x = static_cast<ckd_uintmax>(a);
+  auto y = static_cast<ckd_uintmax>(b);
+  auto z = x + y;
+  *res = static_cast<T>(z);
+  if (sizeof(z) > sizeof(U) && sizeof(z) > sizeof(V)) {
+    if (sizeof(z) > sizeof(T) || std::is_signed<T>::value) {
+      return static_cast<ckd_intmax>(z) != static_cast<T>(z);
+    } else if (!std::is_same<T, ckd_uintmax>::value) {
+      return (z != static_cast<T>(z)
+              || ((std::is_signed<U>::value || std::is_signed<V>::value)
+                  && static_cast<ckd_intmax>(z) < 0));
+    }
+  }
+  bool truncated = false;
+  if (sizeof(T) < sizeof(ckd_intmax)) {
+    truncated = z != static_cast<ckd_uintmax>(static_cast<T>(z));
+  }
+  switch (std::is_signed<T>::value << 2 |  //
+          std::is_signed<U>::value << 1 |  //
+          std::is_signed<V>::value)
+  {
+    case 0:  // u = u + u
+      return truncated | (z < x);
+    case 1:  // u = u + s
+      y ^= static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::min)());
+      return truncated | (static_cast<ckd_intmax>((z ^ x) & (z ^ y)) < 0);
+    case 2:  // u = s + u
+      x ^= static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::min)());
+      return truncated | (static_cast<ckd_intmax>((z ^ x) & (z ^ y)) < 0);
+    case 3:  // u = s + s
+      return truncated
+          | (static_cast<ckd_intmax>(((z | x) & y) | ((z & x) & ~y)) < 0);
+    case 4:  // s = u + u
+      return truncated | (z < x) | (static_cast<ckd_intmax>(z) < 0);
+    case 5:  // s = u + s
+      y ^= static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::min)());
+      return truncated | (x + y < y);
+    case 6:  // s = s + u
+      x ^= static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::min)());
+      return truncated | (x + y < x);
+    case 7:  // s = s + s
+      return truncated | (static_cast<ckd_intmax>((z ^ x) & (z ^ y)) < 0);
+    default:
+      ckd_unreachable(false);
+  }
+}
+
+template<typename T, typename U, typename V>
+ckd_constexpr ckd_inline bool ckd_sub(T* res, U a, V b)
+{
+  static_assert(std::is_integral<T>::value && std::is_integral<U>::value
+                    && std::is_integral<V>::value,
+                "non-integral types not allowed");
+  static_assert(!std::is_same<T, bool>::value && !std::is_same<U, bool>::value
+                    && !std::is_same<V, bool>::value,
+                "checked booleans not supported");
+  static_assert(!std::is_same<T, char>::value && !std::is_same<U, char>::value
+                    && !std::is_same<V, char>::value,
+                "unqualified char type is ambiguous");
+  auto x = static_cast<ckd_uintmax>(a);
+  auto y = static_cast<ckd_uintmax>(b);
+  auto z = x - y;
+  *res = static_cast<T>(z);
+  if (sizeof(z) > sizeof(U) && sizeof(z) > sizeof(V)) {
+    if (sizeof(z) > sizeof(T) || std::is_signed<T>::value) {
+      return static_cast<ckd_intmax>(z) != static_cast<T>(z);
+    } else if (!std::is_same<T, ckd_uintmax>::value) {
+      return (z != static_cast<T>(z)
+              || ((std::is_signed<U>::value || std::is_signed<V>::value)
+                  && static_cast<ckd_intmax>(z) < 0));
+    }
+  }
+  bool truncated = false;
+  if (sizeof(T) < sizeof(ckd_intmax)) {
+    truncated = z != static_cast<ckd_uintmax>(static_cast<T>(z));
+  }
+  switch (std::is_signed<T>::value << 2 |  //
+          std::is_signed<U>::value << 1 |  //
+          std::is_signed<V>::value)
+  {
+    case 0:  // u = u - u
+      return truncated | (x < y);
+    case 1:  // u = u - s
+      y ^= static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::min)());
+      return truncated | (static_cast<ckd_intmax>((x ^ y) & (z ^ x)) < 0);
+    case 2:  // u = s - u
+      return truncated | (y > x) | (static_cast<ckd_intmax>(x) < 0);
+    case 3:  // u = s - s
+      return truncated
+          | (static_cast<ckd_intmax>(((z & x) & y) | ((z | x) & ~y)) < 0);
+    case 4:  // s = u - u
+      return truncated | ((x < y) ^ (static_cast<ckd_intmax>(z) < 0));
+    case 5:  // s = u - s
+      y ^= static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::min)());
+      return truncated | (x >= y);
+    case 6:  // s = s - u
+      x ^= static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::min)());
+      return truncated | (x < y);
+    case 7:  // s = s - s
+      return truncated | (static_cast<ckd_intmax>((x ^ y) & (z ^ x)) < 0);
+    default:
+      ckd_unreachable(false);
+  }
+}
+
+template<typename T, typename U, typename V>
+ckd_constexpr ckd_inline bool ckd_mul(T* res, U a, V b)
+{
+  static_assert(std::is_integral<T>::value && std::is_integral<U>::value
+                    && std::is_integral<V>::value,
+                "non-integral types not allowed");
+  static_assert(!std::is_same<T, bool>::value && !std::is_same<U, bool>::value
+                    && !std::is_same<V, bool>::value,
+                "checked booleans not supported");
+  static_assert(!std::is_same<T, char>::value && !std::is_same<U, char>::value
+                    && !std::is_same<V, char>::value,
+                "unqualified char type is ambiguous");
+  auto x = static_cast<ckd_uintmax>(a);
+  auto y = static_cast<ckd_uintmax>(b);
+  if ((sizeof(U) * 8 - std::is_signed<U>::value)
+          + (sizeof(V) * 8 - std::is_signed<V>::value)
+      <= (sizeof(T) * 8 - std::is_signed<T>::value))
+  {
+    if (sizeof(ckd_uintmax) > sizeof(T) || std::is_signed<T>::value) {
+      auto z = static_cast<ckd_intmax>(x * y);
+      return z != (*res = static_cast<T>(z));
+    } else if (!std::is_same<T, ckd_uintmax>::value) {
+      auto z = x * y;
+      *res = static_cast<T>(z);
+      return (z != static_cast<T>(z)
+              || ((std::is_signed<U>::value || std::is_signed<V>::value)
+                  && static_cast<ckd_intmax>(z) < 0));
+    }
+  }
+  switch (std::is_signed<T>::value << 2 |  //
+          std::is_signed<U>::value << 1 |  //
+          std::is_signed<V>::value)
+  {
+    case 0: {  // u = u * u
+      auto z = x * y;
+      bool o = x && z / x != y;
+      *res = static_cast<T>(z);
+      return o | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res));
+    }
+    case 1: {  // u = u * s
+      auto z = x * y;
+      bool o = x && z / x != y;
+      *res = static_cast<T>(z);
+      return (o | ((static_cast<ckd_intmax>(y) < 0) & !!x)
+              | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res)));
+    }
+    case 2: {  // u = s * u
+      auto z = x * y;
+      bool o = x && z / x != y;
+      *res = static_cast<T>(z);
+      return (o | ((static_cast<ckd_intmax>(x) < 0) & !!y)
+              | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res)));
+    }
+    case 3: {  // u = s * s
+      bool o = false;
+      if (static_cast<ckd_intmax>(x & y) < 0) {
+        x = -x;
+        y = -y;
+      } else if (static_cast<ckd_intmax>(x ^ y) < 0) {
+        o = x && y;
+      }
+      auto z = x * y;
+      o |= x && z / x != y;
+      *res = static_cast<T>(z);
+      return o | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res));
+    }
+    case 4: {  // s = u * u
+      auto z = x * y;
+      bool o = x && z / x != y;
+      *res = static_cast<T>(z);
+      return (o | (static_cast<ckd_intmax>(z) < 0)
+              | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res)));
+    }
+    case 5: {  // s = u * s
+      auto t = -y;
+      t = static_cast<ckd_intmax>(t) < 0 ? y : t;
+      auto p = t * x;
+      bool o = t && p / t != x;
+      bool n = static_cast<ckd_intmax>(y) < 0;
+      auto z = n ? -p : p;
+      *res = static_cast<T>(z);
+      auto m =
+          static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::max)());
+      return (o | (p > m + n)
+              | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res)));
+    }
+    case 6: {  // s = s * u
+      auto t = -x;
+      t = static_cast<ckd_intmax>(t) < 0 ? x : t;
+      auto p = t * y;
+      bool o = t && p / t != y;
+      bool n = static_cast<ckd_intmax>(x) < 0;
+      auto z = n ? -p : p;
+      *res = static_cast<T>(z);
+      auto m =
+          static_cast<ckd_uintmax>((std::numeric_limits<ckd_intmax>::max)());
+      return (o | (p > m + n)
+              | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res)));
+    }
+    case 7: {  // s = s * s
+      auto z = x * y;
+      *res = static_cast<T>(z);
+      return ((((static_cast<ckd_intmax>(y) < 0)
+                && (static_cast<ckd_intmax>(x)
+                    == (std::numeric_limits<ckd_intmax>::min)()))
+               || (y
+                   && ((static_cast<ckd_intmax>(z) / static_cast<ckd_intmax>(y))
+                       != static_cast<ckd_intmax>(x))))
+              | (sizeof(T) < sizeof(z) && z != static_cast<ckd_uintmax>(*res)));
+    }
+    default:
+      ckd_unreachable(false);
+  }
+}
+
+#  elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 
 #    define ckd_add(res, a, b) ckd_expr(add, (res), (a), (b))
 #    define ckd_sub(res, a, b) ckd_expr(sub, (res), (a), (b))
