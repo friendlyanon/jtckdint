@@ -74,9 +74,10 @@
 #  include <stdckdint.h>
 #else
 
-#  if (defined(__llvm__) \
-       || (defined(__GNUC__) && __GNUC__ * 100 + __GNUC_MINOR__ >= 406)) \
-      && !defined(__STRICT_ANSI__)
+#  if defined(CKD_FORCE_IN128) \
+      && ((defined(__llvm__) \
+           || (defined(__GNUC__) && __GNUC__ * 100 + __GNUC_MINOR__ >= 406)) \
+          && !defined(__STRICT_ANSI__))
 #    define ckd_have_int128
 #    define ckd_longest __int128
 #  elif (defined(__cplusplus) && __cplusplus >= 201103L) \

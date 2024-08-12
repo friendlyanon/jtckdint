@@ -21,26 +21,46 @@
 #include "jtckdint.h"
 
 #ifdef __cplusplus
-#  include <limits>
+#  define nil nullptr
 #  define cast(T, x) (static_cast<T>(x))
-#  define TMIN(T) ((std::numeric_limits<T>::min)())
-#  define TMAX(T) ((std::numeric_limits<T>::max)())
 #else
+#  define nil 0
 #  define cast(T, x) ((T)(x))
-#  define TBIT(T) (sizeof(T) * 8 - 1)
-#  define TMIN(T) \
-    (cast(T, ~cast(T, 0)) > 1 ? cast(T, 0) \
-                              : cast(T, cast(ckd_uintmax, 1) << TBIT(T)))
-#  define TMAX(T) \
-    (cast(T, ~cast(T, 0)) > 1 \
-         ? cast(T, ~cast(T, 0)) \
-         : cast(T, (cast(ckd_uintmax, 1) << TBIT(T)) - 1))
 #  define alignas(x) _Alignas(x)
 #endif
+
+#define TBIT(T) (sizeof(T) * 8 - 1)
+#define TMIN(T) \
+  (cast(T, ~cast(T, 0)) > 1 ? cast(T, 0) \
+                            : cast(T, cast(ckd_uintmax, 1) << TBIT(T)))
+#define TMAX(T) \
+  (cast(T, ~cast(T, 0)) > 1 ? cast(T, ~cast(T, 0)) \
+                            : cast(T, (cast(ckd_uintmax, 1) << TBIT(T)) - 1))
 
 #ifdef ckd_have_int128
 typedef signed __int128 int128_t;
 typedef unsigned __int128 uint128_t;
+#  define FOR_TYPES(F) \
+    F(uint, 8) \
+    F(uint, 16) \
+    F(uint, 32) \
+    F(uint, 64) \
+    F(uint, 128) \
+    F(int, 8) \
+    F(int, 16) \
+    F(int, 32) \
+    F(int, 64) \
+    F(int, 128)
+#else
+#  define FOR_TYPES(F) \
+    F(uint, 8) \
+    F(uint, 16) \
+    F(uint, 32) \
+    F(uint, 64) \
+    F(int, 8) \
+    F(int, 16) \
+    F(int, 32) \
+    F(int, 64)
 #endif
 
 #define DECLARE_TEST_VECTORS(T) \
@@ -84,18 +104,9 @@ typedef unsigned __int128 uint128_t;
 #  pragma warning(push)
 #  pragma warning(disable : 4293)
 #endif
-DECLARE_TEST_VECTORS(int8_t);
-DECLARE_TEST_VECTORS(uint8_t);
-DECLARE_TEST_VECTORS(int16_t);
-DECLARE_TEST_VECTORS(uint16_t);
-DECLARE_TEST_VECTORS(int32_t);
-DECLARE_TEST_VECTORS(uint32_t);
-DECLARE_TEST_VECTORS(int64_t);
-DECLARE_TEST_VECTORS(uint64_t);
-#ifdef ckd_have_int128
-DECLARE_TEST_VECTORS(int128_t);
-DECLARE_TEST_VECTORS(uint128_t);
-#endif
+#define X(S, N) DECLARE_TEST_VECTORS(S##N##_t);
+FOR_TYPES(X)
+#undef X
 #ifdef _MSC_VER
 #  pragma warning(pop)
 #endif
@@ -111,9 +122,9 @@ static char const* t_type;
 static char const* u_type;
 static char const* v_type;
 static char const* op;
-static void* u_ptr;
+static void const* u_ptr;
 static int (*u_stringify)(void const*, char*);
-static void* v_ptr;
+static void const* v_ptr;
 static int (*v_stringify)(void const*, char*);
 
 typedef uint8_t tmp_8;
@@ -210,18 +221,7 @@ static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
 #  pragma warning(push)
 #  pragma warning(disable : 4296; disable : 4146)
 #endif
-DECLARE_MISMATCH(int, 8)
-DECLARE_MISMATCH(uint, 8)
-DECLARE_MISMATCH(int, 16)
-DECLARE_MISMATCH(uint, 16)
-DECLARE_MISMATCH(int, 32)
-DECLARE_MISMATCH(uint, 32)
-DECLARE_MISMATCH(int, 64)
-DECLARE_MISMATCH(uint, 64)
-#ifdef ckd_have_int128
-DECLARE_MISMATCH(int, 128)
-DECLARE_MISMATCH(uint, 128)
-#endif
+FOR_TYPES(DECLARE_MISMATCH)
 #ifdef _MSC_VER
 #  pragma warning(pop)
 #endif
@@ -251,30 +251,9 @@ static void read_next(void)
 }
 #endif
 
-static char const* str_ckd_add = "ckd_add";
-static char const* str_ckd_sub = "ckd_sub";
-static char const* str_ckd_mul = "ckd_mul";
-
-char test_odr(int a, int b);
-
-int main(int argc, char* argv[])
-{
-  char o = 0;
-
-  (void)argc;
-  (void)argv;
-
-  o = test_odr(1, -1);
-  if (!o) {
-    return 1;
-  }
-
-  reference = fopen("test.bin", "rb");
-  assert(reference);
-
 #define check_next(T, f) \
   do { \
-    op = str_##f; \
+    op = #f; \
     read_next(); \
     o = cast(char, f(&z, x, y)); \
     if (mismatch_##T(o, z)) { \
@@ -313,27 +292,34 @@ int main(int argc, char* argv[])
     M(T, U, int64_t) \
     M(T, U, int128_t)
 #  define MMM(T) \
-    t_type = str_##T; \
-    MM(T, uint8_t) \
-    MM(T, uint16_t) \
-    MM(T, uint32_t) \
-    MM(T, uint64_t) \
-    MM(T, uint128_t) \
-    MM(T, int8_t) \
-    MM(T, int16_t) \
-    MM(T, int32_t) \
-    MM(T, int64_t) \
-    MM(T, int128_t)
-  MMM(uint8_t)
-  MMM(uint16_t)
-  MMM(uint32_t)
-  MMM(uint64_t)
-  MMM(uint128_t)
-  MMM(int8_t)
-  MMM(int16_t)
-  MMM(int32_t)
-  MMM(int64_t)
-  MMM(int128_t)
+    static char test_##T(void) \
+    { \
+      char o = 0; \
+      t_type = str_##T; \
+      MM(T, uint8_t) \
+      MM(T, uint16_t) \
+      MM(T, uint32_t) \
+      MM(T, uint64_t) \
+      MM(T, uint128_t) \
+      MM(T, int8_t) \
+      MM(T, int16_t) \
+      MM(T, int32_t) \
+      MM(T, int64_t) \
+      MM(T, int128_t) \
+      v_ptr = nil; \
+      u_ptr = nil; \
+      return 0; \
+    }
+MMM(uint8_t)
+MMM(uint16_t)
+MMM(uint32_t)
+MMM(uint64_t)
+MMM(uint128_t)
+MMM(int8_t)
+MMM(int16_t)
+MMM(int32_t)
+MMM(int64_t)
+MMM(int128_t)
 
 #else
 #  define MM(T, U) \
@@ -347,23 +333,54 @@ int main(int argc, char* argv[])
     M(T, U, int32_t) \
     M(T, U, int64_t)
 #  define MMM(T) \
-    t_type = str_##T; \
-    MM(T, uint8_t) \
-    MM(T, uint16_t) \
-    MM(T, uint32_t) \
-    MM(T, uint64_t) \
-    MM(T, int8_t) \
-    MM(T, int16_t) \
-    MM(T, int32_t) \
-    MM(T, int64_t)
-  MMM(uint8_t)
-  MMM(uint16_t)
-  MMM(uint32_t)
-  MMM(uint64_t)
-  MMM(int8_t)
-  MMM(int16_t)
-  MMM(int32_t)
-  MMM(int64_t)
+    static char test_##T(void) \
+    { \
+      char o = 0; \
+      t_type = str_##T; \
+      MM(T, uint8_t) \
+      MM(T, uint16_t) \
+      MM(T, uint32_t) \
+      MM(T, uint64_t) \
+      MM(T, int8_t) \
+      MM(T, int16_t) \
+      MM(T, int32_t) \
+      MM(T, int64_t) \
+      v_ptr = nil; \
+      u_ptr = nil; \
+      return 0; \
+    }
+MMM(uint8_t)
+MMM(uint16_t)
+MMM(uint32_t)
+MMM(uint64_t)
+MMM(int8_t)
+MMM(int16_t)
+MMM(int32_t)
+MMM(int64_t)
+#endif
+
+char test_odr(int a, int b);
+
+int main(int argc, char* argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  if (!test_odr(1, -1)) {
+    return 1;
+  }
+
+  reference = fopen("test.bin", "rb");
+  assert(reference);
+
+#define X(S, N) \
+  if (test_##S##N##_t() != 0) { \
+    return 1; \
+  }
+  FOR_TYPES(X)
+#undef X
+
+#ifndef ckd_have_int128
   while (1) {
     if (fread(&ref, 1, 1, reference) != 1) {
       break;
