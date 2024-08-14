@@ -74,7 +74,7 @@
 #  include <stdckdint.h>
 #else
 
-#  if defined(CKD_FORCE_IN128) \
+#  if defined(CKD_FORCE_INT128) \
       && ((defined(__llvm__) \
            || (defined(__GNUC__) && __GNUC__ * 100 + __GNUC_MINOR__ >= 406)) \
           && !defined(__STRICT_ANSI__))
