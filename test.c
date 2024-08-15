@@ -159,7 +159,7 @@ static char c2[STRINGIFY_BUFFER];
 static char c3[STRINGIFY_BUFFER];
 static char c4[STRINGIFY_BUFFER];
 
-static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
+static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
 {
 #define msg \
   "Mismatch @ 0x%lX\n  Actual: (%c) %s\n  Expected: (%c) %s\n  Types: T = " \
@@ -201,12 +201,12 @@ static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
     WHEN(SIGNED_##S)(if (s != 1) c[--p] = '-'); \
     return p; \
   } \
-  static char mismatch_##S##N##_t(char o1, S##N##_t z1) \
+  static bool mismatch_##S##N##_t(bool o1, S##N##_t z1) \
   { \
-    char o2 = (ref & 0x40) != 0; \
+    bool o2 = (ref & 0x40) != 0; \
     S##N##_t z2 = cast(S##N##_t, read_##N()); \
     if (o1 == o2 && z1 == z2) { \
-      return 0; \
+      return false; \
     } \
     report_mismatch(o1, \
                     o2, \
@@ -214,7 +214,7 @@ static void report_mismatch(char o1, char o2, int i1, int i2, int i3, int i4)
                     stringify_##S##N##_t(&z2, c2), \
                     u_stringify(u_ptr, c3), \
                     v_stringify(v_ptr, c4)); \
-    return 1; \
+    return true; \
   }
 
 #ifdef _MSC_VER
@@ -255,9 +255,9 @@ static void read_next(void)
   do { \
     op = #f; \
     read_next(); \
-    o = cast(char, f(&z, x, y)); \
+    o = f(&z, x, y); \
     if (mismatch_##T(o, z)) { \
-      return 1; \
+      return true; \
     } \
   } while (0)
 
@@ -292,9 +292,9 @@ static void read_next(void)
     M(T, U, int64_t) \
     M(T, U, int128_t)
 #  define MMM(T) \
-    static char test_##T(void) \
+    static bool test_##T(void) \
     { \
-      char o = 0; \
+      bool o = false; \
       t_type = str_##T; \
       MM(T, uint8_t) \
       MM(T, uint16_t) \
@@ -308,7 +308,7 @@ static void read_next(void)
       MM(T, int128_t) \
       v_ptr = nil; \
       u_ptr = nil; \
-      return 0; \
+      return false; \
     }
 MMM(uint8_t)
 MMM(uint16_t)
@@ -335,7 +335,7 @@ MMM(int128_t)
 #  define MMM(T) \
     static char test_##T(void) \
     { \
-      char o = 0; \
+      bool o = false; \
       t_type = str_##T; \
       MM(T, uint8_t) \
       MM(T, uint16_t) \
@@ -347,7 +347,7 @@ MMM(int128_t)
       MM(T, int64_t) \
       v_ptr = nil; \
       u_ptr = nil; \
-      return 0; \
+      return false; \
     }
 MMM(uint8_t)
 MMM(uint16_t)
@@ -359,7 +359,7 @@ MMM(int32_t)
 MMM(int64_t)
 #endif
 
-char test_odr(int a, int b);
+bool test_odr(int a, int b);
 
 int main(int argc, char* argv[])
 {
@@ -374,7 +374,7 @@ int main(int argc, char* argv[])
   assert(reference);
 
 #define X(S, N) \
-  if (test_##S##N##_t() != 0) { \
+  if (test_##S##N##_t()) { \
     return 1; \
   }
   FOR_TYPES(X)
