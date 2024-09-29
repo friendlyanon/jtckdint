@@ -115,20 +115,20 @@ setlocal
 call vcvars.bat
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-set comp=cl.exe /nologo /Wall /WX /D_CRT_SECURE_NO_WARNINGS=1 /diagnostics:caret /external:I . /external:W0 /permissive- /Zc:inline /Zc:preprocessor
+set comp=cl.exe /nologo /Wall /wd4710 /WX /D_CRT_SECURE_NO_WARNINGS=1 /diagnostics:caret /external:I . /external:W0 /permissive- /Zc:inline /Zc:preprocessor
 
-call :build /Od /std:c11
+call :build /Od /d2Obforceinline /std:c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build /O2 /wd4710 /wd4711 /wd4883 /std:c11
+call :build /O2 /wd4711 /wd4883 /std:c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 set comp=%comp% /EHsc /TP /Zc:__cplusplus
 
-call :build /Od
+call :build /Od /d2Obforceinline
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build /O2 /wd4710 /wd4711 /wd4883
+call :build /O2 /wd4711 /wd4883
 
 endlocal & exit /b %errorlevel%
 
