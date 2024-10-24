@@ -99,16 +99,9 @@ typedef unsigned __int128 uint128_t;
       cast(T, TMAX(T) / 2 - 4), \
   }
 
-#ifdef _MSC_VER
-#  pragma warning(push)
-#  pragma warning(disable : 4293)
-#endif
 #define X(S, N) DECLARE_TEST_VECTORS(S##N##_t);
 FOR_TYPES(X)
 #undef X
-#ifdef _MSC_VER
-#  pragma warning(pop)
-#endif
 
 static FILE* reference;
 static unsigned char ref;
@@ -216,14 +209,7 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
     return true; \
   }
 
-#ifdef _MSC_VER
-#  pragma warning(push)
-#  pragma warning(disable : 4296; disable : 4146)
-#endif
 FOR_TYPES(DECLARE_MISMATCH)
-#ifdef _MSC_VER
-#  pragma warning(pop)
-#endif
 
 #ifdef ckd_have_int128
 static void read_next(void)
