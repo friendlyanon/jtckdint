@@ -128,20 +128,24 @@ typedef uint128_t tmp_128;
 #endif
 
 #define read_8() (cast(tmp_8, buffer[0]))
-#define read_16() ((cast(tmp_16, buffer[0]) << 8) | cast(tmp_16, buffer[1]))
+#define read_16() \
+  (cast(tmp_16, (cast(tmp_16, buffer[0]) << 8) | cast(tmp_16, buffer[1])))
 #define read_32_(b) \
-  ((cast(tmp_32, buffer[(b) * 4]) << 24) \
-   | (cast(tmp_32, buffer[(b) * 4 + 1]) << 16) \
-   | (cast(tmp_32, buffer[(b) * 4 + 2]) << 8) \
-   | cast(tmp_32, buffer[(b) * 4 + 3]))
+  (cast(tmp_32, \
+        (cast(tmp_32, buffer[(b) * 4]) << 24) \
+            | (cast(tmp_32, buffer[(b) * 4 + 1]) << 16) \
+            | (cast(tmp_32, buffer[(b) * 4 + 2]) << 8) \
+            | cast(tmp_32, buffer[(b) * 4 + 3])))
 #define read_32() read_32_(0)
 #define read_64_(b) \
-  ((cast(tmp_64, read_32_((b) * 2)) << 32) \
-   | cast(tmp_64, read_32_((b) * 2 + 1)))
+  (cast(tmp_64, \
+        (cast(tmp_64, read_32_((b) * 2)) << 32) \
+            | cast(tmp_64, read_32_((b) * 2 + 1))))
 #define read_64() read_64_(0)
 #ifdef ckd_have_int128
 #  define read_128() \
-    ((cast(tmp_128, read_64_(0)) << 64) | cast(tmp_128, read_64_(1)))
+    (cast(tmp_128, \
+          (cast(tmp_128, read_64_(0)) << 64) | cast(tmp_128, read_64_(1))))
 #endif
 
 #define STRINGIFY_BUFFER 50
