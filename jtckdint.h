@@ -74,10 +74,9 @@
 #  include <stdckdint.h>
 #else
 
-#  if defined(CKD_FORCE_INT128) \
-      && ((defined(__llvm__) \
-           || (defined(__GNUC__) && __GNUC__ * 100 + __GNUC_MINOR__ >= 406)) \
-          && !defined(__STRICT_ANSI__))
+#  if (defined(__llvm__) \
+       || (defined(__GNUC__) && __GNUC__ * 100 + __GNUC_MINOR__ >= 406)) \
+      && !defined(__STRICT_ANSI__)
 #    define ckd_have_int128
 #    define ckd_longest __int128
 #  elif (defined(__cplusplus) && __cplusplus >= 201103L) \
@@ -418,17 +417,17 @@ ckd_constexpr ckd_inline bool ckd_mul(T* res, U a, V b)
 
 #    define ckd_expr(op, res, a, b) \
       (_Generic(*res, \
-          signed char: ckd_##op##_schar, \
-          unsigned char: ckd_##op##_uchar, \
-          signed short: ckd_##op##_sshort, \
-          unsigned short: ckd_##op##_ushort, \
-          signed int: ckd_##op##_sint, \
-          unsigned int: ckd_##op##_uint, \
-          signed long: ckd_##op##_slong, \
-          unsigned long: ckd_##op##_ulong, \
-          signed long long: ckd_##op##_slonger, \
-          unsigned long long: ckd_##op##_ulonger ckd_generic_int128( \
-              ckd_##op##_sint128, ckd_##op##_uint128))( \
+           signed char: ckd_##op##_schar, \
+           unsigned char: ckd_##op##_uchar, \
+           signed short: ckd_##op##_sshort, \
+           unsigned short: ckd_##op##_ushort, \
+           signed int: ckd_##op##_sint, \
+           unsigned int: ckd_##op##_uint, \
+           signed long: ckd_##op##_slong, \
+           unsigned long: ckd_##op##_ulong, \
+           signed long long: ckd_##op##_slonger, \
+           unsigned long long: ckd_##op##_ulonger ckd_generic_int128( \
+               ckd_##op##_sint128, ckd_##op##_uint128))( \
           res, \
           (ckd_uintmax)(a), \
           (ckd_uintmax)(b), \

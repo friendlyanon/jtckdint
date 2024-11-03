@@ -53,17 +53,17 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 
 set comp=g++.exe -isystem . -Wall -Wextra -Werror -o test.exe -x c++
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 -DCKD_FORCE_INT128=1
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -pedantic-errors -std=c++14
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O0 -std=c++14 -DCKD_FORCE_INT128=1
+call :build -O0 -std=c++14
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O0 -pedantic-errors -std=c++14
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O3 -std=c++14 -DCKD_FORCE_INT128=1
+call :build -O3 -std=c++14
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -pedantic-errors -std=c++14
 
@@ -93,17 +93,17 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 
 set comp=clang++.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-c++98-compat -Wno-c++98-compat-pedantic -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe -x c++
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 -D__STRICT_ANSI__=1 -DCKD_FORCE_INT128=1
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -pedantic-errors -std=c++14 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O0 -std=c++14 -D__STRICT_ANSI__=1 -DCKD_FORCE_INT128=1
+call :build -O0 -std=c++14 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O0 -pedantic-errors -std=c++14 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O3 -std=c++14 -D__STRICT_ANSI__=1 -DCKD_FORCE_INT128=1
+call :build -O3 -std=c++14 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -pedantic-errors -std=c++14 -D__STRICT_ANSI__=1
 
