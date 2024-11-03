@@ -162,8 +162,8 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
   "%s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, " \
   "j = %d\n"
 #define args \
-  offset, '0' + o1, c1 + i1, '0' + o2, c2 + i2, t_type, u_type, v_type, op, \
-      c3 + i3, c4 + i4, i, j
+  cast(unsigned long, offset), '0' + o1, c1 + i1, '0' + o2, c2 + i2, t_type, \
+      u_type, v_type, op, c3 + i3, c4 + i4, i, j
   assert(!(fprintf(stderr, msg, args) < 0));
 #undef args
 #undef msg

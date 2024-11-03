@@ -72,9 +72,9 @@ endlocal & exit /b %errorlevel%
 :llvm
 setlocal
 
-if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\18
+if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\19
 
-set comp=clang.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
+set comp=clang.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-pre-c11-compat -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
 if not %errorlevel% == 0 exit /b %errorlevel%
