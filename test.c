@@ -25,7 +25,11 @@
 #else
 #  define nil 0
 #  define cast(T, x) ((T)(x))
-#  define alignas(x) _Alignas(x)
+#  if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#    define alignas(x) _Alignas(x)
+#  else
+#    define alignas(x) __attribute__((__aligned__(x)))
+#  endif
 #endif
 
 #define TBIT(T) (sizeof(T) * 8 - 1)
@@ -37,8 +41,8 @@
                             : cast(T, (cast(ckd_uintmax, 1) << TBIT(T)) - 1))
 
 #ifdef ckd_have_int128
-typedef signed __int128 int128_t;
-typedef unsigned __int128 uint128_t;
+typedef ckd_intmax int128_t;
+typedef ckd_uintmax uint128_t;
 #  define FOR_TYPES(F) \
     F(uint, 8) \
     F(uint, 16) \
@@ -62,7 +66,7 @@ typedef unsigned __int128 uint128_t;
     F(int, 64)
 #endif
 
-#define DECLARE_TEST_VECTORS(T) \
+#define Y(T) \
   static const T k##T[] = { \
       0, \
       1, \
@@ -97,11 +101,11 @@ typedef unsigned __int128 uint128_t;
       cast(T, TMAX(T) / 2 - 2), \
       cast(T, TMAX(T) / 2 - 3), \
       cast(T, TMAX(T) / 2 - 4), \
-  }
-
-#define X(S, N) DECLARE_TEST_VECTORS(S##N##_t);
+  };
+#define X(S, N) Y(S##N##_t)
 FOR_TYPES(X)
 #undef X
+#undef Y
 
 static FILE* reference;
 static unsigned char ref;
@@ -119,33 +123,32 @@ static int (*u_stringify)(void const*, char*);
 static void const* v_ptr;
 static int (*v_stringify)(void const*, char*);
 
-typedef uint8_t tmp_8;
-typedef uint16_t tmp_16;
-typedef uint32_t tmp_32;
-typedef uint64_t tmp_64;
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 #ifdef ckd_have_int128
-typedef uint128_t tmp_128;
+typedef uint128_t u128;
 #endif
 
-#define read_8() (cast(tmp_8, buffer[0]))
+#define read_8() (cast(u8, buffer[0]))
 #define read_16() \
-  (cast(tmp_16, (cast(tmp_16, buffer[0]) << 8) | cast(tmp_16, buffer[1])))
+  (cast(u16, (cast(u16, buffer[0]) << 8) | cast(u16, buffer[1])))
 #define read_32_(b) \
-  (cast(tmp_32, \
-        (cast(tmp_32, buffer[(b) * 4]) << 24) \
-            | (cast(tmp_32, buffer[(b) * 4 + 1]) << 16) \
-            | (cast(tmp_32, buffer[(b) * 4 + 2]) << 8) \
-            | cast(tmp_32, buffer[(b) * 4 + 3])))
+  (cast(u32, \
+        (cast(u32, buffer[(b) * 4]) << 24) \
+            | (cast(u32, buffer[(b) * 4 + 1]) << 16) \
+            | (cast(u32, buffer[(b) * 4 + 2]) << 8) \
+            | cast(u32, buffer[(b) * 4 + 3])))
 #define read_32() read_32_(0)
 #define read_64_(b) \
-  (cast(tmp_64, \
-        (cast(tmp_64, read_32_((b) * 2)) << 32) \
-            | cast(tmp_64, read_32_((b) * 2 + 1))))
+  (cast(u64, \
+        (cast(u64, read_32_((b) * 2)) << 32) \
+            | cast(u64, read_32_((b) * 2 + 1))))
 #define read_64() read_64_(0)
 #ifdef ckd_have_int128
 #  define read_128() \
-    (cast(tmp_128, \
-          (cast(tmp_128, read_64_(0)) << 64) | cast(tmp_128, read_64_(1))))
+    (cast(u128, (cast(u128, read_64_(0)) << 64) | cast(u128, read_64_(1))))
 #endif
 
 #define STRINGIFY_BUFFER 50
@@ -181,7 +184,7 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
 #define EXPAND(...) __VA_ARGS__
 #define WHEN(c) IF(c)(EXPAND, EAT)
 
-#define DECLARE_MISMATCH(S, N) \
+#define X(S, N) \
   static char const* str_##S##N##_t = #S #N "_t"; \
   static int stringify_##S##N##_t(void const* x_, char* c) \
   { \
@@ -212,21 +215,17 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
                     v_stringify(v_ptr, c4)); \
     return true; \
   }
+FOR_TYPES(X)
+#undef X
 
-FOR_TYPES(DECLARE_MISMATCH)
-
-#ifdef ckd_have_int128
 static void read_next(void)
 {
   offset = ftell(reference);
+#ifdef ckd_have_int128
   assert(fread(&ref, 1, 1, reference) == 1);
   size = cast(size_t, ref & 0x3F);
   assert(fread(buffer, 1, size, reference) == size);
-}
 #else
-static void read_next(void)
-{
-  offset = ftell(reference);
   while (1) {
     assert(fread(&ref, 1, 1, reference) == 1);
     size = cast(size_t, ref & 0x3F);
@@ -237,12 +236,16 @@ static void read_next(void)
     assert(!fseek(reference, cast(long, size), SEEK_CUR));
     offset += 1 + cast(long, size);
   }
-}
 #endif
+}
+
+static char const* str_ckd_add = "ckd_add";
+static char const* str_ckd_sub = "ckd_sub";
+static char const* str_ckd_mul = "ckd_mul";
 
 #define check_next(T, f) \
   do { \
-    op = #f; \
+    op = str_##f; \
     read_next(); \
     o = f(&z, x, y); \
     if (mismatch_##T(o, z)) { \
