@@ -310,8 +310,8 @@ MMM(int16_t)
 MMM(int32_t)
 MMM(int64_t)
 WITH_128(MMM)(int128_t)
-    /* clang-format on */
-    EAT()
+EAT()
+/* clang-format on */
 
 bool test_odr(int a, int b);
 
