@@ -40,31 +40,36 @@
   (cast(T, ~cast(T, 0)) > 1 ? cast(T, ~cast(T, 0)) \
                             : cast(T, (cast(ckd_uintmax, 1) << TBIT(T)) - 1))
 
+#define XCAT(x, y) x##y
+#define CAT(x, y) XCAT(x, y)
+#define IF(c) CAT(IF_, c)
+#define IF_0(t, ...) __VA_ARGS__
+#define IF_1(t, ...) t
+#define EAT(...)
+#define EXPAND(...) __VA_ARGS__
+#define WHEN(c) IF(c)(EXPAND, EAT)
+
 #ifdef ckd_have_int128
+#  define have_128 1
 typedef ckd_intmax int128_t;
 typedef ckd_uintmax uint128_t;
-#  define FOR_TYPES(F) \
-    F(uint, 8) \
-    F(uint, 16) \
-    F(uint, 32) \
-    F(uint, 64) \
-    F(uint, 128) \
-    F(int, 8) \
-    F(int, 16) \
-    F(int, 32) \
-    F(int, 64) \
-    F(int, 128)
 #else
-#  define FOR_TYPES(F) \
-    F(uint, 8) \
-    F(uint, 16) \
-    F(uint, 32) \
-    F(uint, 64) \
-    F(int, 8) \
-    F(int, 16) \
-    F(int, 32) \
-    F(int, 64)
+#  define have_128 0
 #endif
+
+/* clang-format off */
+#define FOR_TYPES(F) \
+  F(uint, 8) \
+  F(uint, 16) \
+  F(uint, 32) \
+  F(uint, 64) \
+  IF(have_128)(F, EAT)(uint, 128) \
+  F(int, 8) \
+  F(int, 16) \
+  F(int, 32) \
+  F(int, 64) \
+  IF(have_128)(F, EAT)(int, 128)
+/* clang-format on */
 
 #define Y(T) \
   static const T k##T[] = { \
@@ -175,15 +180,6 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
 #define SIGNED_int 1
 #define SIGNED_uint 0
 
-#define XCAT(x, y) x##y
-#define CAT(x, y) XCAT(x, y)
-#define IF(c) CAT(IF_, c)
-#define IF_0(t, ...) __VA_ARGS__
-#define IF_1(t, ...) t
-#define EAT(...)
-#define EXPAND(...) __VA_ARGS__
-#define WHEN(c) IF(c)(EXPAND, EAT)
-
 #define X(S, N) \
   static char const* str_##S##N##_t = #S #N "_t"; \
   static int stringify_##S##N##_t(void const* x_, char* c) \
@@ -270,86 +266,52 @@ static char const* str_ckd_mul = "ckd_mul";
     } \
   }
 
-#ifdef ckd_have_int128
-#  define MM(T, U) \
-    u_type = str_##U; \
-    M(T, U, uint8_t) \
-    M(T, U, uint16_t) \
-    M(T, U, uint32_t) \
-    M(T, U, uint64_t) \
-    M(T, U, uint128_t) \
-    M(T, U, int8_t) \
-    M(T, U, int16_t) \
-    M(T, U, int32_t) \
-    M(T, U, int64_t) \
-    M(T, U, int128_t)
-#  define MMM(T) \
-    static bool test_##T(void) \
-    { \
-      bool o = false; \
-      t_type = str_##T; \
-      MM(T, uint8_t) \
-      MM(T, uint16_t) \
-      MM(T, uint32_t) \
-      MM(T, uint64_t) \
-      MM(T, uint128_t) \
-      MM(T, int8_t) \
-      MM(T, int16_t) \
-      MM(T, int32_t) \
-      MM(T, int64_t) \
-      MM(T, int128_t) \
-      v_ptr = nil; \
-      u_ptr = nil; \
-      return false; \
-    }
-MMM(uint8_t)
-MMM(uint16_t)
-MMM(uint32_t)
-MMM(uint64_t)
-MMM(uint128_t)
-MMM(int8_t)
-MMM(int16_t)
-MMM(int32_t)
-MMM(int64_t)
-MMM(int128_t)
+/* clang-format off */
+#define MM(T, U) \
+  u_type = str_##U; \
+  M(T, U, uint8_t) \
+  M(T, U, uint16_t) \
+  M(T, U, uint32_t) \
+  M(T, U, uint64_t) \
+  IF(have_128)(M, EAT)(T, U, uint128_t) \
+  M(T, U, int8_t) \
+  M(T, U, int16_t) \
+  M(T, U, int32_t) \
+  M(T, U, int64_t) \
+  IF(have_128)(M, EAT)(T, U, int128_t)
 
-#else
-#  define MM(T, U) \
-    u_type = str_##U; \
-    M(T, U, uint8_t) \
-    M(T, U, uint16_t) \
-    M(T, U, uint32_t) \
-    M(T, U, uint64_t) \
-    M(T, U, int8_t) \
-    M(T, U, int16_t) \
-    M(T, U, int32_t) \
-    M(T, U, int64_t)
-#  define MMM(T) \
-    static char test_##T(void) \
-    { \
-      bool o = false; \
-      t_type = str_##T; \
-      MM(T, uint8_t) \
-      MM(T, uint16_t) \
-      MM(T, uint32_t) \
-      MM(T, uint64_t) \
-      MM(T, int8_t) \
-      MM(T, int16_t) \
-      MM(T, int32_t) \
-      MM(T, int64_t) \
-      v_ptr = nil; \
-      u_ptr = nil; \
-      return false; \
-    }
+#define MMM(T) \
+  static bool test_##T(void) \
+  { \
+    bool o = false; \
+    t_type = str_##T; \
+    MM(T, uint8_t) \
+    MM(T, uint16_t) \
+    MM(T, uint32_t) \
+    MM(T, uint64_t) \
+    IF(have_128)(MM, EAT)(T, uint128_t) \
+    MM(T, int8_t) \
+    MM(T, int16_t) \
+    MM(T, int32_t) \
+    MM(T, int64_t) \
+    IF(have_128)(MM, EAT)(T, int128_t) \
+    v_ptr = nil; \
+    u_ptr = nil; \
+    return false; \
+  }
+
 MMM(uint8_t)
 MMM(uint16_t)
 MMM(uint32_t)
 MMM(uint64_t)
+IF(have_128)(MMM, EAT)(uint128_t)
 MMM(int8_t)
 MMM(int16_t)
 MMM(int32_t)
 MMM(int64_t)
-#endif
+IF(have_128)(MMM, EAT)(int128_t)
+    /* clang-format on */
+    EAT()
 
 bool test_odr(int a, int b);
 
