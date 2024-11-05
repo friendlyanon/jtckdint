@@ -50,11 +50,11 @@
 #define WHEN(c) IF(c)(EXPAND, EAT)
 
 #ifdef ckd_have_int128
-#  define have_128 1
+#  define WITH_128(F) F
 typedef ckd_intmax int128_t;
 typedef ckd_uintmax uint128_t;
 #else
-#  define have_128 0
+#  define WITH_128(F) EAT
 #endif
 
 /* clang-format off */
@@ -63,12 +63,12 @@ typedef ckd_uintmax uint128_t;
   F(uint, 16) \
   F(uint, 32) \
   F(uint, 64) \
-  IF(have_128)(F, EAT)(uint, 128) \
+  WITH_128(F)(uint, 128) \
   F(int, 8) \
   F(int, 16) \
   F(int, 32) \
   F(int, 64) \
-  IF(have_128)(F, EAT)(int, 128)
+  WITH_128(F)(int, 128)
 /* clang-format on */
 
 #define Y(T) \
@@ -273,12 +273,12 @@ static char const* str_ckd_mul = "ckd_mul";
   M(T, U, uint16_t) \
   M(T, U, uint32_t) \
   M(T, U, uint64_t) \
-  IF(have_128)(M, EAT)(T, U, uint128_t) \
+  WITH_128(M)(T, U, uint128_t) \
   M(T, U, int8_t) \
   M(T, U, int16_t) \
   M(T, U, int32_t) \
   M(T, U, int64_t) \
-  IF(have_128)(M, EAT)(T, U, int128_t)
+  WITH_128(M)(T, U, int128_t)
 
 #define MMM(T) \
   static bool test_##T(void) \
@@ -289,12 +289,12 @@ static char const* str_ckd_mul = "ckd_mul";
     MM(T, uint16_t) \
     MM(T, uint32_t) \
     MM(T, uint64_t) \
-    IF(have_128)(MM, EAT)(T, uint128_t) \
+    WITH_128(MM)(T, uint128_t) \
     MM(T, int8_t) \
     MM(T, int16_t) \
     MM(T, int32_t) \
     MM(T, int64_t) \
-    IF(have_128)(MM, EAT)(T, int128_t) \
+    WITH_128(MM)(T, int128_t) \
     v_ptr = nil; \
     u_ptr = nil; \
     return false; \
@@ -304,12 +304,12 @@ MMM(uint8_t)
 MMM(uint16_t)
 MMM(uint32_t)
 MMM(uint64_t)
-IF(have_128)(MMM, EAT)(uint128_t)
+WITH_128(MMM)(uint128_t)
 MMM(int8_t)
 MMM(int16_t)
 MMM(int32_t)
 MMM(int64_t)
-IF(have_128)(MMM, EAT)(int128_t)
+WITH_128(MMM)(int128_t)
     /* clang-format on */
     EAT()
 
@@ -324,8 +324,7 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  reference = fopen("test.bin", "rb");
-  assert(reference);
+  assert(reference = fopen("test.bin", "rb"));
 
 #define X(S, N) \
   if (test_##S##N##_t()) { \
