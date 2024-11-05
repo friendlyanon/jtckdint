@@ -15,7 +15,7 @@ exit /b %errorlevel%
 setlocal
 call :%jtckdint_build_mode%
 set code=%errorlevel%
-if not %code% == 0 echo ! Exited with code: [%code%]>&2
+if not %code% == 0 >&2 echo ! Exited with code: [%code%]
 endlocal & exit /b %code%
 
 :self
@@ -34,38 +34,32 @@ setlocal
 call mingw.bat
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-set comp=gcc.exe -isystem . -Wall -Wextra -Werror -o test.exe
+set comp=gcc.exe -isystem . -Wall -Wextra -Wconversion -Werror -o test.exe
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error
 if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -pedantic-errors -std=c11
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -Wpedantic -std=c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O0
 if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -O0 -pedantic-errors -std=c11
+call :build -O0 -Wpedantic -std=c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O3
 if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -O3 -pedantic-errors -std=c11
+call :build -O3 -Wpedantic -std=c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-set comp=g++.exe -isystem . -Wall -Wextra -Werror -o test.exe -x c++
+set comp=g++.exe -isystem . -Wall -Wextra -Wconversion -Wpedantic -Werror -o test.exe -x c++
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14
-if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -pedantic-errors -std=c++14
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O0 -std=c++14
 if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -O0 -pedantic-errors -std=c++14
-if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O3 -std=c++14
-if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -O3 -pedantic-errors -std=c++14
 
 endlocal & exit /b %errorlevel%
 
@@ -91,21 +85,15 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -std=c11 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-set comp=clang++.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-c++98-compat -Wno-c++98-compat-pedantic -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe -x c++
+set comp=clang++.exe -isystem . -Weverything -Wno-unsafe-buffer-usage -Wno-c++98-compat -Wno-c++98-compat-pedantic -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe -x c++
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 -D__STRICT_ANSI__=1
-if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -pedantic-errors -std=c++14 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O0 -std=c++14 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -O0 -pedantic-errors -std=c++14 -D__STRICT_ANSI__=1
-if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O3 -std=c++14 -D__STRICT_ANSI__=1
-if not %errorlevel% == 0 exit /b %errorlevel%
-call :build -O3 -pedantic-errors -std=c++14 -D__STRICT_ANSI__=1
 
 endlocal & exit /b %errorlevel%
 
