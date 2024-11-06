@@ -172,7 +172,7 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
 #define args \
   cast(unsigned long, offset), '0' + o1, c1 + i1, '0' + o2, c2 + i2, t_type, \
       u_type, v_type, op, c3 + i3, c4 + i4, i, j
-  assert(!(fprintf(stderr, msg, args) < 0));
+  assert(fprintf(stderr, msg, args) >= 0);
 #undef args
 #undef msg
 }
@@ -229,7 +229,7 @@ static void read_next(void)
       assert(fread(buffer, 1, size, reference) == size);
       return;
     }
-    assert(!fseek(reference, cast(long, size), SEEK_CUR));
+    assert(fseek(reference, cast(long, size), SEEK_CUR) == 0);
     offset += 1 + cast(long, size);
   }
 #endif
@@ -338,18 +338,18 @@ int main(int argc, char* argv[])
     if (fread(&ref, 1, 1, reference) != 1) {
       break;
     }
-    assert(ref & 0x80);
-    assert(!fseek(reference, ref & 0x3F, SEEK_CUR));
+    assert((ref & 0x80) != 0);
+    assert(fseek(reference, ref & 0x3F, SEEK_CUR) == 0);
   }
 #endif
 
   if (fgetc(reference) != EOF || !feof(reference)) {
     long current = ftell(reference);
     long end = 0;
-    assert(!fseek(reference, 0, SEEK_END));
+    assert(fseek(reference, 0, SEEK_END) == 0);
     end = ftell(reference);
 #define msg "Reference was not read to completion. %ld bytes left.\n"
-    assert(!(fprintf(stderr, msg, end - current) < 0));
+    assert(fprintf(stderr, msg, end - current) >= 0);
 #undef msg
     return 1;
   }
