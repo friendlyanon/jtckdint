@@ -12,11 +12,9 @@ call :self msvc
 exit /b %errorlevel%
 
 :build_with_mode
-setlocal
 call :%jtckdint_build_mode%
-set code=%errorlevel%
-if not %code% == 0 >&2 echo ! Exited with code: [%code%]
-endlocal & exit /b %code%
+if not %errorlevel% == 0 >&2 echo ! Exited with code: [%errorlevel%]
+exit /b %errorlevel%
 
 :self
 setlocal
@@ -61,7 +59,7 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O3 -std=c++14
 
-endlocal & exit /b %errorlevel%
+exit /b %errorlevel%
 
 :llvm
 setlocal
@@ -95,7 +93,7 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build -O3 -std=c++14 -D__STRICT_ANSI__=1
 
-endlocal & exit /b %errorlevel%
+exit /b %errorlevel%
 
 :msvc
 setlocal
@@ -118,7 +116,7 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :build /O2 /wd4711 /wd4883
 
-endlocal & exit /b %errorlevel%
+exit /b %errorlevel%
 
 :build
 echo ^< %comp% %* test.c other.c
