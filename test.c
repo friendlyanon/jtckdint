@@ -25,11 +25,7 @@
 #else
 #  define nil 0
 #  define cast(T, x) ((T)(x))
-#  if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-#    define alignas(x) _Alignas(x)
-#  else
-#    define alignas(x) __attribute__((__aligned__(x)))
-#  endif
+#  define alignas(x) _Alignas(x)
 #endif
 
 #define TBIT(T) (sizeof(T) * 8 - 1)
@@ -186,14 +182,14 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
   { \
     S##N##_t x = *cast(S##N##_t const*, x_); \
     int p = STRINGIFY_BUFFER; \
-    WHEN(SIGNED_##S)(int const s = x < 0 ? -1 : 1); \
+    WHEN(SIGNED_##S)(bool const s = x < 0); \
     c[--p] = 0; \
     do { \
       S##N##_t tmp = cast(S##N##_t, x % 10); \
-      c[--p] = '0' + cast(char, WHEN(SIGNED_##S)(s == -1 ? -tmp :) tmp); \
+      c[--p] = '0' + cast(char, WHEN(SIGNED_##S)(s ? -tmp :) tmp); \
       x /= 10; \
     } while (x != 0); \
-    WHEN(SIGNED_##S)(if (s != 1) c[--p] = '-'); \
+    WHEN(SIGNED_##S)(if (s) c[--p] = '-'); \
     return p; \
   } \
   static bool mismatch_##S##N##_t(bool o1, S##N##_t z1) \

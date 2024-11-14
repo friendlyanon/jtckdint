@@ -34,17 +34,17 @@ if not %errorlevel% == 0 exit /b %errorlevel%
 
 set comp=gcc.exe -isystem . -Wall -Wextra -Wconversion -Werror -o test.exe
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=gnu11
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -Wpedantic -std=c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O0
+call :build -O0 -std=gnu11
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O0 -Wpedantic -std=c11
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O3
+call :build -O3 -std=gnu11
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -Wpedantic -std=c11
 if not %errorlevel% == 0 exit /b %errorlevel%
@@ -68,17 +68,17 @@ if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM
 
 set comp=clang.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-pre-c11-compat -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c11 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O0 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
+call :build -O0 -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O0 -std=c11 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :build -O3 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
+call :build -O3 -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
 if not %errorlevel% == 0 exit /b %errorlevel%
 call :build -O3 -std=c11 -D__STRICT_ANSI__=1
 if not %errorlevel% == 0 exit /b %errorlevel%
