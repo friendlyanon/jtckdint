@@ -69,6 +69,8 @@ exit /b %errorlevel%
 :llvm
 setlocal
 
+echo ? arch=amd64
+
 if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\19
 
 set comp=clang.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-pre-c11-compat -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
