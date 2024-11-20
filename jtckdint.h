@@ -213,15 +213,6 @@ ckd_constexpr ckd_inline bool ckd_sub(T* res, U a, V b)
   auto y = static_cast<ckd_uintmax>(b);
   auto z = x - y;
   *res = static_cast<T>(z);
-  if (sizeof(z) > sizeof(U) && sizeof(z) > sizeof(V)) {
-    if (sizeof(z) > sizeof(T) || std::is_signed<T>::value) {
-      return static_cast<ckd_intmax>(z) != static_cast<T>(z);
-    } else if (!std::is_same<T, ckd_uintmax>::value) {
-      return (z != static_cast<T>(z)
-              || ((std::is_signed<U>::value || std::is_signed<V>::value)
-                  && static_cast<ckd_intmax>(z) < 0));
-    }
-  }
   bool truncated = false;
   if (sizeof(T) < sizeof(ckd_intmax)) {
     truncated = z != static_cast<ckd_uintmax>(static_cast<T>(z));
