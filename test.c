@@ -312,30 +312,29 @@ EAT()
 
 bool test_odr(int a, int b);
 
-static char const* get_platform(void)
+static char const* get_platform(int x)
 {
-  if (CHAR_BIT != 8) {
-    return "<unknown>";
+  if (CHAR_BIT != x + 8) {
+    return "unknown";
   }
 
-  if (sizeof(int) + sizeof(long) + sizeof(void*) == 12) {
+  if (sizeof(int) + sizeof(long) + sizeof(void*) == x + 12) {
     return "ILP32";
   }
 
-  if (sizeof(long) + sizeof(void*) == 16) {
+  if (sizeof(long) + sizeof(void*) == x + 16) {
     return "LP64";
   }
 
-  if (sizeof(long long) + sizeof(void*) == 16) {
+  if (sizeof(long long) + sizeof(void*) == x + 16) {
     return "LLP64";
   }
 
-  return "<unknown>";
+  return "unknown";
 }
 
 int main(int argc, char* argv[])
 {
-  (void)argc;
   (void)argv;
 
 #ifdef ckd_have_int128
@@ -343,7 +342,7 @@ int main(int argc, char* argv[])
 #else
 #  define msg "+ [%s] 8, 16, 32, 64\n"
 #endif
-  assert(printf(msg, get_platform()) >= 0);
+  assert(printf(msg, get_platform(argc < 0)) >= 0);
 #undef msg
 
   if (!test_odr(1, -1)) {
