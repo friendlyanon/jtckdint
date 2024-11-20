@@ -2,13 +2,19 @@
 
 if not "%jtckdint_build_mode%" == "" goto :build_with_mode
 
-call :self mingw
+call :self mingw32
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+call :self mingw64
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 call :self llvm
 if not %errorlevel% == 0 exit /b %errorlevel%
 
-call :self msvc
+call :self msvc32
+if not %errorlevel% == 0 exit /b %errorlevel%
+
+call :self msvc64
 exit /b %errorlevel%
 
 :build_with_mode
@@ -26,10 +32,24 @@ for %%g in (o obj ilk pdb) do if exist other.%%g del other.%%g
 if %code% == 0 if exist test.exe del test.exe
 exit /b %code%
 
+:mingw32
+setlocal
+set arch=x86
+call :mingw
+exit /b %errorlevel%
+
+:mingw64
+setlocal
+set arch=amd64
+call :mingw
+exit /b %errorlevel%
+
 :mingw
 setlocal
 
-call mingw.bat
+echo ? arch=%arch%
+
+call mingw.bat %arch%
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 set comp=gcc.exe -isystem . -Wall -Wextra -Wconversion -Werror -o test.exe
@@ -95,10 +115,24 @@ call :build -O3 -std=c++14 -D__STRICT_ANSI__=1
 
 exit /b %errorlevel%
 
+:msvc32
+setlocal
+set arch=x86
+call :msvc
+exit /b %errorlevel%
+
+:msvc64
+setlocal
+set arch=amd64
+call :msvc
+exit /b %errorlevel%
+
 :msvc
 setlocal
 
-call vcvars.bat
+echo ? arch=%arch%
+
+call vcvars.bat -arch=%arch% -host_arch=amd64 -no_logo
 if not %errorlevel% == 0 exit /b %errorlevel%
 
 set comp=cl.exe /nologo /Wall /wd4710 /WX /D_CRT_SECURE_NO_WARNINGS=1 /diagnostics:caret /external:I . /external:W0 /permissive- /Zc:inline /Zc:preprocessor
