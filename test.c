@@ -163,8 +163,8 @@ static char c4[STRINGIFY_BUFFER];
 static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
 {
 #define msg \
-  "Mismatch @ 0x%lX\n  Actual: (%c) %s\n  Expected: (%c) %s\n  Types: T = " \
-  "%s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, " \
+  "Mismatch @ 0x%lX\n  Actual  : (%c) %s\n  Expected: (%c) %s\n  Types: T =" \
+  " %s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, " \
   "j = %d\n"
 #define args \
   cast(unsigned long, offset), '0' + o1, c1 + i1, '0' + o2, c2 + i2, t_type, \
