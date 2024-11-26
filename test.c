@@ -30,13 +30,12 @@
 #  define alignas(x) _Alignas(x)
 #endif
 
+#define TMIN_UINT(T) (cast(T, 0))
+#define TMAX_UINT(T) (cast(T, ~cast(T, 0)))
+
 #define TBIT(T) (sizeof(T) * 8 - 1)
-#define TMIN(T) \
-  (cast(T, ~cast(T, 0)) > 1 ? cast(T, 0) \
-                            : cast(T, cast(ckd_uintmax, 1) << TBIT(T)))
-#define TMAX(T) \
-  (cast(T, ~cast(T, 0)) > 1 ? cast(T, ~cast(T, 0)) \
-                            : cast(T, (cast(ckd_uintmax, 1) << TBIT(T)) - 1))
+#define TMIN_INT(T) (cast(T, cast(ckd_uintmax, 1) << TBIT(T)))
+#define TMAX_INT(T) (cast(T, (cast(ckd_uintmax, 1) << TBIT(T)) - 1))
 
 #define XCAT(x, y) x##y
 #define CAT(x, y) XCAT(x, y)
@@ -69,7 +68,10 @@ typedef ckd_uintmax uint128_t;
   WITH_128(F)(int, 128)
 /* clang-format on */
 
-#define Y(T) \
+#define SIGNED_int 1
+#define SIGNED_uint 0
+
+#define Y(T, min, max) \
   static const T k##T[] = { \
       0, \
       1, \
@@ -84,28 +86,31 @@ typedef ckd_uintmax uint128_t;
       cast(T, -4), \
       cast(T, -5), \
       cast(T, -6), \
-      TMIN(T), \
-      cast(T, TMIN(T) + 1), \
-      cast(T, TMIN(T) + 2), \
-      cast(T, TMIN(T) + 3), \
-      cast(T, TMIN(T) + 4), \
-      TMAX(T), \
-      cast(T, TMAX(T) - 1), \
-      cast(T, TMAX(T) - 2), \
-      cast(T, TMAX(T) - 3), \
-      cast(T, TMAX(T) - 4), \
-      cast(T, TMIN(T) / 2), \
-      cast(T, TMIN(T) / 2 + 1), \
-      cast(T, TMIN(T) / 2 + 2), \
-      cast(T, TMIN(T) / 2 + 3), \
-      cast(T, TMIN(T) / 2 + 4), \
-      cast(T, TMAX(T) / 2), \
-      cast(T, TMAX(T) / 2 - 1), \
-      cast(T, TMAX(T) / 2 - 2), \
-      cast(T, TMAX(T) / 2 - 3), \
-      cast(T, TMAX(T) / 2 - 4), \
+      min(T), \
+      cast(T, min(T) + 1), \
+      cast(T, min(T) + 2), \
+      cast(T, min(T) + 3), \
+      cast(T, min(T) + 4), \
+      max(T), \
+      cast(T, max(T) - 1), \
+      cast(T, max(T) - 2), \
+      cast(T, max(T) - 3), \
+      cast(T, max(T) - 4), \
+      cast(T, min(T) / 2), \
+      cast(T, min(T) / 2 + 1), \
+      cast(T, min(T) / 2 + 2), \
+      cast(T, min(T) / 2 + 3), \
+      cast(T, min(T) / 2 + 4), \
+      cast(T, max(T) / 2), \
+      cast(T, max(T) / 2 - 1), \
+      cast(T, max(T) / 2 - 2), \
+      cast(T, max(T) / 2 - 3), \
+      cast(T, max(T) / 2 - 4), \
   };
-#define X(S, N) Y(S##N##_t)
+#define X(S, N) \
+  Y(S##N##_t, \
+    CAT(TMIN_, IF(SIGNED_##S)(INT, UINT)), \
+    CAT(TMAX_, IF(SIGNED_##S)(INT, UINT)))
 FOR_TYPES(X)
 #undef X
 #undef Y
@@ -175,9 +180,6 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
 #undef args
 #undef msg
 }
-
-#define SIGNED_int 1
-#define SIGNED_uint 0
 
 #define X(S, N) \
   static char const* str_##S##N##_t = #S #N "_t"; \
