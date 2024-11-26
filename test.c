@@ -17,6 +17,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "jtckdint.h"
 
@@ -153,7 +154,7 @@ typedef uint128_t u128;
     (cast(u128, (cast(u128, read_64_(0)) << 64) | cast(u128, read_64_(1))))
 #endif
 
-#define STRINGIFY_BUFFER 50
+#define STRINGIFY_BUFFER 41
 
 static char c1[STRINGIFY_BUFFER];
 static char c2[STRINGIFY_BUFFER];
@@ -162,12 +163,13 @@ static char c4[STRINGIFY_BUFFER];
 
 static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
 {
+  int in = i1 < i2 ? i1 : i2;
 #define msg \
-  "Mismatch @ 0x%lX\n  Actual  : (%c) %s\n  Expected: (%c) %s\n  Types: T =" \
+  "Mismatch @ 0x%lX\n  Actual:   (%c) %s\n  Expected: (%c) %s\n  Types: T =" \
   " %s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, " \
   "j = %d\n"
 #define args \
-  cast(unsigned long, offset), '0' + o1, c1 + i1, '0' + o2, c2 + i2, t_type, \
+  cast(unsigned long, offset), '0' + o1, c1 + in, '0' + o2, c2 + in, t_type, \
       u_type, v_type, op, c3 + i3, c4 + i4, i, j
   assert(fprintf(stderr, msg, args) >= 0);
 #undef args
@@ -191,6 +193,7 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
       x /= 10; \
     } while (x != 0); \
     WHEN(SIGNED_##S)(if (s) c[--p] = '-'); \
+    memset(c, ' ', cast(size_t, p)); \
     return p; \
   } \
   static bool mismatch_##S##N##_t(bool o1, S##N##_t z1) \
