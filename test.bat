@@ -45,7 +45,7 @@ echo ? arch=%arch%
 
 call mingw.bat %arch% || goto :exit
 
-set comp=gcc.exe -isystem . -Wall -Wextra -Wconversion -Werror -o test.exe
+set comp=gcc.exe -isystem . -Wall -Wextra -Wconversion -Werror -Wfatal-errors -o test.exe
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=gnu11 || goto :exit
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -Wpedantic -std=c11 || goto :exit
@@ -73,7 +73,7 @@ echo ? arch=amd64
 
 if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\19
 
-set comp=clang.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-pre-c11-compat -Werror -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
+set comp=clang.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-pre-c11-compat -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" || goto :exit
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c11 -D__STRICT_ANSI__=1 || goto :exit
