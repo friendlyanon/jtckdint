@@ -58,8 +58,6 @@ typedef unsigned __int128 uint128_t;
 #define IF(c) CAT(IF_, c)
 #define IF_0(t, f) f
 #define IF_1(t, f) t
-#define EAT(x)
-#define ID(x) x
 
 #define FOR_TYPES(F) \
   F(uint, 8) \
@@ -123,17 +121,6 @@ FOR_TYPES(X)
 static FILE* reference;
 static uint8_t buffer[1 + sizeof(uint128_t)];
 
-#define SHIFT_int8_t 0
-#define SHIFT_uint8_t 0
-#define SHIFT_int16_t 1
-#define SHIFT_uint16_t 1
-#define SHIFT_int32_t 1
-#define SHIFT_uint32_t 1
-#define SHIFT_int64_t 1
-#define SHIFT_uint64_t 1
-#define SHIFT_int128_t 1
-#define SHIFT_uint128_t 1
-
 #define output_next(T, op, is_int128) \
   do { \
     T z = 0; \
@@ -146,7 +133,8 @@ static uint8_t buffer[1 + sizeof(uint128_t)];
       if (--count == 0) { \
         break; \
       } \
-      IF(SHIFT_##T)(ID, EAT)(z >>= 8;) \
+      z >>= 4; \
+      z >>= 4; \
     } \
     buffer[--index] = \
         (uint8_t)(((is_int128) << 7) | (o << 6) | (uint8_t)sizeof(T)); \
