@@ -1,17 +1,19 @@
-// Copyright 2023 Justine Alexandra Roberts Tunney
-//
-// Permission to use, copy, modify, and/or distribute this software for
-// any purpose with or without fee is hereby granted, provided that the
-// above copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
-// WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
-// AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
-// DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
-// PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-// PERFORMANCE OF THIS SOFTWARE.
+/**
+ * Copyright 2023 Justine Alexandra Roberts Tunney
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
 
 #if ((!defined(__SIZEOF_INT128__) || defined(__STRICT_ANSI__)) \
      || !(defined(__GNUC__) && __GNUC__ >= 5 && !defined(__ICC) \
@@ -22,12 +24,28 @@
 #endif
 
 #include <assert.h>
-#include <stdint.h>
+#include <limits.h>
 #include <stdio.h>
+
+#ifndef INT64
+#  define INT64 long
+#endif
+
+typedef char static_assert_char_bit_is_8_bits[(CHAR_BIT == 8) * 2 - 1];
+typedef char static_assert_fundamentals_match_stdint
+    [(sizeof(short) == 2 && sizeof(int) == 4 && sizeof(INT64) == 8) * 2 - 1];
 
 #define TMIN_UINT(T) ((T)(0))
 #define TMAX_UINT(T) ((T)(~(T)(0)))
 
+typedef signed char int8_t;
+typedef unsigned char uint8_t;
+typedef short int16_t;
+typedef unsigned short uint16_t;
+typedef int int32_t;
+typedef unsigned int uint32_t;
+typedef INT64 int64_t;
+typedef unsigned INT64 uint64_t;
 typedef __int128 int128_t;
 typedef unsigned __int128 uint128_t;
 
@@ -40,6 +58,8 @@ typedef unsigned __int128 uint128_t;
 #define IF(c) CAT(IF_, c)
 #define IF_0(t, f) f
 #define IF_1(t, f) t
+#define EAT(x)
+#define ID(x) x
 
 #define FOR_TYPES(F) \
   F(uint, 8) \
@@ -103,26 +123,35 @@ FOR_TYPES(X)
 static FILE* reference;
 static uint8_t buffer[1 + sizeof(uint128_t)];
 
+#define SHIFT_int8_t 0
+#define SHIFT_uint8_t 0
+#define SHIFT_int16_t 1
+#define SHIFT_uint16_t 1
+#define SHIFT_int32_t 1
+#define SHIFT_uint32_t 1
+#define SHIFT_int64_t 1
+#define SHIFT_uint64_t 1
+#define SHIFT_int128_t 1
+#define SHIFT_uint128_t 1
+
 #define output_next(T, op, is_int128) \
   do { \
     T z = 0; \
     unsigned int count = sizeof(T); \
     unsigned int index = sizeof(buffer); \
-    uint8_t o = 0; \
-    o = (uint8_t)(__builtin_##op##_overflow(x, y, &z)); \
+    unsigned int to_write = 0; \
+    uint8_t o = (uint8_t)(__builtin_##op##_overflow(x, y, &z)); \
     while (1) { \
       buffer[--index] = (uint8_t)(z & 0xFF); \
       if (--count == 0) { \
         break; \
       } \
-      if (sizeof(T) != 1) { \
-        z >>= 8; \
-      } \
+      IF(SHIFT_##T)(ID, EAT)(z >>= 8;) \
     } \
     buffer[--index] = \
         (uint8_t)(((is_int128) << 7) | (o << 6) | (uint8_t)sizeof(T)); \
-    assert(fwrite(buffer + index, 1, sizeof(buffer) - index, reference) \
-           == sizeof(buffer) - index); \
+    to_write = sizeof(buffer) - index; \
+    assert(fwrite(buffer + index, 1, to_write, reference) == to_write); \
   } while (0)
 
 #define M(T, U, V, I) \
