@@ -1,2 +1,8 @@
 *.o
+*.obj
+*.ilk
+*.pdb
+/corpus
+/corpus.exe
 /test
+/test.exe

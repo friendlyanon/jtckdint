@@ -72,7 +72,7 @@ typedef ckd_uintmax uint128_t;
 #define SIGNED_uint 0
 
 #define Y(T, min, max) \
-  static const T k##T[] = { \
+  static T const k##T[] = { \
       0, \
       1, \
       2, \
