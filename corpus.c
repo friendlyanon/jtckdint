@@ -35,23 +35,23 @@ typedef char static_assert_char_bit_is_8_bits[(CHAR_BIT == 8) * 2 - 1];
 typedef char static_assert_fundamentals_match_stdint
     [(sizeof(short) == 2 && sizeof(int) == 4 && sizeof(INT64) == 8) * 2 - 1];
 
-#define TMIN_UINT(T) ((T)(0))
-#define TMAX_UINT(T) ((T)(~(T)(0)))
+#define TMIN_U(T) ((T)(0))
+#define TMAX_U(T) ((T)(~(T)(0)))
 
-typedef signed char int8_t;
-typedef unsigned char uint8_t;
-typedef short int16_t;
-typedef unsigned short uint16_t;
-typedef int int32_t;
-typedef unsigned int uint32_t;
-typedef INT64 int64_t;
-typedef unsigned INT64 uint64_t;
-typedef __int128 int128_t;
-typedef unsigned __int128 uint128_t;
+typedef signed char i8;
+typedef unsigned char u8;
+typedef short i16;
+typedef unsigned short u16;
+typedef int i32;
+typedef unsigned int u32;
+typedef INT64 i64;
+typedef unsigned INT64 u64;
+typedef __int128 i128;
+typedef unsigned __int128 u128;
 
 #define TBIT(T) (sizeof(T) * 8 - 1)
-#define TMIN_INT(T) ((T)((uint128_t)(1) << TBIT(T)))
-#define TMAX_INT(T) ((T)(((uint128_t)(1) << TBIT(T)) - 1))
+#define TMIN_I(T) ((T)((u128)(1) << TBIT(T)))
+#define TMAX_I(T) ((T)(((u128)(1) << TBIT(T)) - 1))
 
 #define XCAT(x, y) x##y
 #define CAT(x, y) XCAT(x, y)
@@ -60,19 +60,19 @@ typedef unsigned __int128 uint128_t;
 #define IF_1(t, f) t
 
 #define FOR_TYPES(F) \
-  F(uint, 8) \
-  F(uint, 16) \
-  F(uint, 32) \
-  F(uint, 64) \
-  F(uint, 128) \
-  F(int, 8) \
-  F(int, 16) \
-  F(int, 32) \
-  F(int, 64) \
-  F(int, 128)
+  F(u, 8) \
+  F(u, 16) \
+  F(u, 32) \
+  F(u, 64) \
+  F(u, 128) \
+  F(i, 8) \
+  F(i, 16) \
+  F(i, 32) \
+  F(i, 64) \
+  F(i, 128)
 
-#define SIGNED_int 1
-#define SIGNED_uint 0
+#define SIGNED_i 1
+#define SIGNED_u 0
 
 #define Y(T, min, max) \
   static T const k##T[] = { \
@@ -111,15 +111,13 @@ typedef unsigned __int128 uint128_t;
       (T)(max(T) / 2 - 4), \
   };
 #define X(S, N) \
-  Y(S##N##_t, \
-    CAT(TMIN_, IF(SIGNED_##S)(INT, UINT)), \
-    CAT(TMAX_, IF(SIGNED_##S)(INT, UINT)))
+  Y(S##N, CAT(TMIN_, IF(SIGNED_##S)(I, U)), CAT(TMAX_, IF(SIGNED_##S)(I, U)))
 FOR_TYPES(X)
 #undef X
 #undef Y
 
 static FILE* reference;
-static uint8_t buffer[1 + sizeof(uint128_t)];
+static u8 buffer[1 + sizeof(u128)];
 
 #define output_next(T, op, is_int128) \
   do { \
@@ -127,17 +125,16 @@ static uint8_t buffer[1 + sizeof(uint128_t)];
     unsigned int count = sizeof(T); \
     unsigned int index = sizeof(buffer); \
     unsigned int to_write = 0; \
-    uint8_t o = (uint8_t)(__builtin_##op##_overflow(x, y, &z)); \
+    u8 o = (u8)(__builtin_##op##_overflow(x, y, &z)); \
     while (1) { \
-      buffer[--index] = (uint8_t)(z & 0xFF); \
+      buffer[--index] = (u8)(z & 0xFF); \
       if (--count == 0) { \
         break; \
       } \
       z >>= 4; \
       z >>= 4; \
     } \
-    buffer[--index] = \
-        (uint8_t)(((is_int128) << 7) | (o << 6) | (uint8_t)sizeof(T)); \
+    buffer[--index] = (u8)(((is_int128) << 7) | (o << 6) | (u8)sizeof(T)); \
     to_write = sizeof(buffer) - index; \
     assert(fwrite(buffer + index, 1, to_write, reference) == to_write); \
   } while (0)
@@ -154,44 +151,44 @@ static uint8_t buffer[1 + sizeof(uint128_t)];
   }
 
 #define MM(T, U, I) \
-  M(T, U, uint8_t, 0 | I) \
-  M(T, U, uint16_t, 0 | I) \
-  M(T, U, uint32_t, 0 | I) \
-  M(T, U, uint64_t, 0 | I) \
-  M(T, U, uint128_t, 1 | I) \
-  M(T, U, int8_t, 0 | I) \
-  M(T, U, int16_t, 0 | I) \
-  M(T, U, int32_t, 0 | I) \
-  M(T, U, int64_t, 0 | I) \
-  M(T, U, int128_t, 1 | I)
+  M(T, U, u8, 0 | I) \
+  M(T, U, u16, 0 | I) \
+  M(T, U, u32, 0 | I) \
+  M(T, U, u64, 0 | I) \
+  M(T, U, u128, 1 | I) \
+  M(T, U, i8, 0 | I) \
+  M(T, U, i16, 0 | I) \
+  M(T, U, i32, 0 | I) \
+  M(T, U, i64, 0 | I) \
+  M(T, U, i128, 1 | I)
 
 #define MMM(T, I) \
   static void output_##T(void) \
   { \
     int i = 0; \
     int j = 0; \
-    MM(T, uint8_t, 0 | I) \
-    MM(T, uint16_t, 0 | I) \
-    MM(T, uint32_t, 0 | I) \
-    MM(T, uint64_t, 0 | I) \
-    MM(T, uint128_t, 1 | I) \
-    MM(T, int8_t, 0 | I) \
-    MM(T, int16_t, 0 | I) \
-    MM(T, int32_t, 0 | I) \
-    MM(T, int64_t, 0 | I) \
-    MM(T, int128_t, 1 | I) \
+    MM(T, u8, 0 | I) \
+    MM(T, u16, 0 | I) \
+    MM(T, u32, 0 | I) \
+    MM(T, u64, 0 | I) \
+    MM(T, u128, 1 | I) \
+    MM(T, i8, 0 | I) \
+    MM(T, i16, 0 | I) \
+    MM(T, i32, 0 | I) \
+    MM(T, i64, 0 | I) \
+    MM(T, i128, 1 | I) \
   }
 
-MMM(uint8_t, 0)
-MMM(uint16_t, 0)
-MMM(uint32_t, 0)
-MMM(uint64_t, 0)
-MMM(uint128_t, 1)
-MMM(int8_t, 0)
-MMM(int16_t, 0)
-MMM(int32_t, 0)
-MMM(int64_t, 0)
-MMM(int128_t, 1)
+MMM(u8, 0)
+MMM(u16, 0)
+MMM(u32, 0)
+MMM(u64, 0)
+MMM(u128, 1)
+MMM(i8, 0)
+MMM(i16, 0)
+MMM(i32, 0)
+MMM(i64, 0)
+MMM(i128, 1)
 
 int main(int argc, char* argv[])
 {
@@ -200,7 +197,7 @@ int main(int argc, char* argv[])
 
   assert(reference = fopen("test.bin", "wb"));
 
-#define X(S, N) output_##S##N##_t();
+#define X(S, N) output_##S##N();
   FOR_TYPES(X)
 #undef X
 
