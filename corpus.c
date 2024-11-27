@@ -38,8 +38,8 @@ typedef unsigned __int128 uint128_t;
 #define XCAT(x, y) x##y
 #define CAT(x, y) XCAT(x, y)
 #define IF(c) CAT(IF_, c)
-#define IF_0(t, ...) __VA_ARGS__
-#define IF_1(t, ...) t
+#define IF_0(t, f) f
+#define IF_1(t, f) t
 
 #define FOR_TYPES(F) \
   F(uint, 8) \
