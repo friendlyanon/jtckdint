@@ -122,9 +122,9 @@ static u8 buffer[1 + sizeof(u128)];
 #define output_next(T, op, is_int128) \
   do { \
     T z = 0; \
-    unsigned int count = sizeof(T); \
-    unsigned int index = sizeof(buffer); \
-    unsigned int to_write = 0; \
+    int count = (int)sizeof(T); \
+    int index = (int)sizeof(buffer); \
+    u32 to_write = 0; \
     u8 o = (u8)(__builtin_##op##_overflow(x, y, &z)); \
     while (1) { \
       buffer[--index] = (u8)(z & 0xFF); \
@@ -135,7 +135,7 @@ static u8 buffer[1 + sizeof(u128)];
       z >>= 4; \
     } \
     buffer[--index] = (u8)(((is_int128) << 7) | (o << 6) | (u8)sizeof(T)); \
-    to_write = sizeof(buffer) - index; \
+    to_write = (u32)((int)sizeof(buffer) - index); \
     assert(fwrite(buffer + index, 1, to_write, reference) == to_write); \
   } while (0)
 
