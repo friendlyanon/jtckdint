@@ -38,8 +38,6 @@ jobs:
       run: .github\toolchain.ps1 ${{ matrix.arch }} ${{ matrix.compiler }}
 
     - name: Test
-      env:
-        CLANG_VERSION_PREFIX: C:\Program Files\LLVM\lib\clang\19
       shell: cmd
       run: |
         set arch=64
