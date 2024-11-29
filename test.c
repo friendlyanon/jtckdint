@@ -24,10 +24,11 @@
 #ifdef __cplusplus
 #  define nil nullptr
 #  define cast(T, x) (static_cast<T>(x))
+#  define align(x) alignas(x)
 #else
 #  define nil 0
 #  define cast(T, x) ((T)(x))
-#  define alignas(x) _Alignas(x)
+#  define align(x) _Alignas(x)
 #endif
 
 #define TMIN_UINT(T) (cast(T, 0))
@@ -118,7 +119,7 @@ FOR_TYPES(X)
 static FILE* reference;
 static unsigned char ref;
 static size_t size;
-alignas(16) static unsigned char buffer[16];
+align(16) static unsigned char buffer[16];
 static long offset;
 static int i;
 static int j;

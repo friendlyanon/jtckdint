@@ -40,7 +40,6 @@ jobs:
     - name: Test
       env:
         CLANG_VERSION_PREFIX: C:\Program Files\LLVM\lib\clang\19
-        CLANG_EXTRA_FLAGS: " -Wno-unused-macros"
       shell: cmd
       run: |
         set arch=64
