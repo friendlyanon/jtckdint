@@ -34,21 +34,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Get GCC
-      if: matrix.compiler == 'mingw'
-      run: |
-        $tag = (Invoke-RestMethod https://api.github.com/repos/friendlyanon/w64devkit/releases/latest -Method Get).tag_name
-        Invoke-WebRequest "https://github.com/friendlyanon/w64devkit/releases/download/$tag/mingw-${{ matrix.arch }}.exe" -OutFile mingw-${{ matrix.arch }}.exe
-        .\mingw-${{ matrix.arch }}.exe -y -o.
-        Set-Content mingw.bat "@echo off`r`nset CC=gcc.exe`r`nset CXX=g++.exe`r`nset `"PATH=%PATH%;%cd%\w64devkit\bin`""
-
-    - name: Get LLVM 19.1.3
-      if: matrix.compiler == 'llvm'
-      run: choco install llvm --version=19.1.3
-
-    - name: Create vcvars.bat
-      if: matrix.compiler == 'msvc'
-      run: Set-Content vcvars.bat "@echo off`r`nfor /F `"delims=`" %%g in ('`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe`" -Property InstallationPath') do set dir=%%g`r`ncall `"%dir%\Common7\Tools\vsdevcmd.bat`" -arch=${{ matrix.arch }} -host_arch=amd64 -no_logo"
+    - name: Setup toolchain
+      run: .github\toolchain.ps1 ${{ matrix.arch }} ${{ matrix.compiler }}
 
     - name: Test
       env:
