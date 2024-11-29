@@ -344,9 +344,9 @@ int main(int argc, char* argv[])
   (void)argv;
 
 #ifdef ckd_have_int128
-#  define msg "+ [%s] 8, 16, 32, 64, 128\n"
+#  define msg "+ [%s] intmax: 128\n"
 #else
-#  define msg "+ [%s] 8, 16, 32, 64\n"
+#  define msg "+ [%s] intmax: 64\n"
 #endif
   assert(printf(msg, get_platform(argc < 0)) >= 0);
 #undef msg
