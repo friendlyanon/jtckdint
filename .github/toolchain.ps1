@@ -5,7 +5,8 @@ if ($compiler -eq 'mingw') {
   $tag = (Invoke-RestMethod https://api.github.com/repos/friendlyanon/w64devkit/releases/latest -Method Get).tag_name
   Invoke-WebRequest "https://github.com/friendlyanon/w64devkit/releases/download/$tag/mingw-$arch.exe" -OutFile "mingw-$arch.exe"
   Start-Process "mingw-$arch.exe" -ArgumentList '-y', '-o.' -Wait
-  Set-Content mingw.bat "@echo off`r`nset CC=gcc.exe`r`nset CXX=g++.exe`r`nset `"PATH=%PATH%;%cd%\w64devkit\bin`""
+  Set-Content mingw.bat "@echo off`r`nset CC=gcc.exe`r`nset CXX=g++.exe`r`nset `"PATH=%cd%\w64devkit\bin;%PATH%`""
+  .\w64devkit\bin\gcc.exe -dumpmachine
 } elseif ($compiler -eq 'llvm') {
   choco.exe install llvm --version=19.1.3 --no-progress
 } else {
