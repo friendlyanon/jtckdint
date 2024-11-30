@@ -12,3 +12,6 @@ if ($compiler -eq 'mingw') {
 } else {
   Set-Content vcvars.bat "@echo off`r`nfor /F `"delims=`" %%g in ('`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe`" -Property InstallationPath') do set dir=%%g`r`ncall `"%dir%\Common7\Tools\vsdevcmd.bat`" -arch=$arch -host_arch=amd64 -no_logo"
 }
+
+$arch = if ($compiler -eq 'llvm') { '' } elseif ($arch -eq 'x86') { '32' } else { '64' }
+Add-Content $env:GITHUB_ENV "jtckdint_build_mode=$compiler$arch"

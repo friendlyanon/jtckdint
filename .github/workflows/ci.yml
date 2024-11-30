@@ -39,9 +39,4 @@ jobs:
 
     - name: Test
       shell: cmd
-      run: |
-        set arch=64
-        if ${{ matrix.arch }} == x86 set arch=32
-        if ${{ matrix.compiler }} == llvm set arch=
-        set jtckdint_build_mode=${{ matrix.compiler }}%arch%
-        call test.bat
+      run: call test.bat
