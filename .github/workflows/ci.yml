@@ -1,0 +1,42 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check
+      run: make check
+
+    - name: Test
+      run: ./test.sh
+
+  windows:
+    strategy:
+      matrix:
+        arch: [amd64, x86]
+
+        compiler: [mingw, msvc, llvm]
+
+        exclude:
+        - { arch: x86, compiler: llvm }
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup toolchain
+      run: .github\toolchain.ps1 ${{ matrix.arch }} ${{ matrix.compiler }}
+
+    - name: Test
+      shell: cmd
+      run: call test.cmd

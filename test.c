@@ -13,150 +13,383 @@
 // TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 // PERFORMANCE OF THIS SOFTWARE.
 
+#include <assert.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "jtckdint.h"
 
-#include <stdio.h>
-#include <assert.h>
-#include <stdint.h>
-#include <inttypes.h>
+#ifdef __cplusplus
+#  define nil nullptr
+#  define cast(T, x) (static_cast<T>(x))
+#  define align(x) alignas(x)
+#else
+#  define nil 0
+#  define cast(T, x) ((T)(x))
+#  define align(x) _Alignas(x)
+#endif
 
-#ifdef __ckd_intmax
+#define TMIN_UINT(T) (cast(T, 0))
+#define TMAX_UINT(T) (cast(T, ~cast(T, 0)))
 
 #define TBIT(T) (sizeof(T) * 8 - 1)
-#define TMIN(T) (((T) ~(T)0) > 1 ? (T)0 : (T)((__ckd_uintmax_t)1 << TBIT(T)))
-#define TMAX(T) (((T) ~(T)0) > 1 ? (T) ~(T)0 : (T)(((__ckd_uintmax_t)1 << TBIT(T)) - 1))
+#define TMIN_INT(T) (cast(T, cast(__ckd_uintmax_t, 1) << TBIT(T)))
+#define TMAX_INT(T) (cast(T, (cast(__ckd_uintmax_t, 1) << TBIT(T)) - 1))
+
+#define XCAT(x, y) x##y
+#define CAT(x, y) XCAT(x, y)
+#define IF(c) CAT(IF_, c)
+#define IF_0(t, ...) __VA_ARGS__
+#define IF_1(t, ...) t
+#define EAT(...)
+#define EXPAND(...) __VA_ARGS__
+#define WHEN(c) IF(c)(EXPAND, EAT)
 
 #ifdef __ckd_have_int128
-typedef signed __int128 int128_t;
-typedef unsigned __int128 uint128_t;
-#endif
-
-#define DECLARE_TEST_VECTORS(T)                 \
-  static const T k##T[] = {                     \
-    0, 1, 2, 3, 4, 5, 6,                        \
-    (T)-1, (T)-2, (T)-3, (T)-4, (T)-5, (T)-6,   \
-    TMIN(T),                                    \
-    (T)(TMIN(T) + 1),                           \
-    (T)(TMIN(T) + 2),                           \
-    (T)(TMIN(T) + 3),                           \
-    (T)(TMIN(T) + 4),                           \
-    TMAX(T),                                    \
-    (T)(TMAX(T) - 1),                           \
-    (T)(TMAX(T) - 2),                           \
-    (T)(TMAX(T) - 3),                           \
-    (T)(TMAX(T) - 4),                           \
-    (T)(TMIN(T) / 2),                           \
-    (T)(TMIN(T) / 2 + 1),                       \
-    (T)(TMIN(T) / 2 + 2),                       \
-    (T)(TMIN(T) / 2 + 3),                       \
-    (T)(TMIN(T) / 2 + 4),                       \
-    (T)(TMAX(T) / 2),                           \
-    (T)(TMAX(T) / 2 - 1),                       \
-    (T)(TMAX(T) / 2 - 2),                       \
-    (T)(TMAX(T) / 2 - 3),                       \
-    (T)(TMAX(T) / 2 - 4),                       \
-  }
-
-DECLARE_TEST_VECTORS(int8_t);
-DECLARE_TEST_VECTORS(uint8_t);
-DECLARE_TEST_VECTORS(int16_t);
-DECLARE_TEST_VECTORS(uint16_t);
-DECLARE_TEST_VECTORS(int32_t);
-DECLARE_TEST_VECTORS(uint32_t);
-DECLARE_TEST_VECTORS(int64_t);
-DECLARE_TEST_VECTORS(uint64_t);
-#ifdef __ckd_have_int128
-DECLARE_TEST_VECTORS(int128_t);
-DECLARE_TEST_VECTORS(uint128_t);
-#endif
-
-int main(int argc, char *argv[]) {
-  (void)argc;
-  (void)argv;
-
-#define M(T,U,V)                                                        \
-  for (unsigned i = 0; i < sizeof(k##U) / sizeof(k##U[0]); ++i) {       \
-    U x = k##U[i];                                                      \
-    for (unsigned j = 0; j < sizeof(k##V) / sizeof(k##V[0]); ++j) {     \
-      T z1, z2;                                                         \
-      V y = k##V[j];                                                    \
-      assert(ckd_add(&z1, x, y) == __builtin_add_overflow(x, y, &z2));  \
-      assert(z1 == z2);                                                 \
-      assert(ckd_sub(&z1, x, y) == __builtin_sub_overflow(x, y, &z2));  \
-      assert(z1 == z2);                                                 \
-      assert(ckd_mul(&z1, x, y) == __builtin_mul_overflow(x, y, &z2));  \
-      assert(z1 == z2);                                                 \
-    }                                                                   \
-  }
-
-#ifdef __ckd_have_int128
-#define MM(T, U)       \
-  M(T, U, uint8_t)     \
-  M(T, U, uint16_t)    \
-  M(T, U, uint32_t)    \
-  M(T, U, uint64_t)    \
-  M(T, U, uint128_t)   \
-  M(T, U, int8_t)      \
-  M(T, U, int16_t)     \
-  M(T, U, int32_t)     \
-  M(T, U, int64_t)     \
-  M(T, U, int128_t)
-#define MMM(T)        \
-  MM(T, uint8_t)      \
-  MM(T, uint16_t)     \
-  MM(T, uint32_t)     \
-  MM(T, uint64_t)     \
-  MM(T, uint128_t)    \
-  MM(T, int8_t)       \
-  MM(T, int16_t)      \
-  MM(T, int32_t)      \
-  MM(T, int64_t)      \
-  MM(T, int128_t)
-  MMM(uint8_t)
-  MMM(uint16_t)
-  MMM(uint32_t)
-  MMM(uint64_t)
-  MMM(uint128_t)
-  MMM(int8_t)
-  MMM(int16_t)
-  MMM(int32_t)
-  MMM(int64_t)
-  MMM(int128_t)
-
+#  define WITH_128(F) F
+typedef __ckd_intmax_t int128_t;
+typedef __ckd_uintmax_t uint128_t;
 #else
-#define MM(T, U)       \
-  M(T, U, uint8_t)     \
-  M(T, U, uint16_t)    \
-  M(T, U, uint32_t)    \
-  M(T, U, uint64_t)    \
-  M(T, U, int8_t)      \
-  M(T, U, int16_t)     \
-  M(T, U, int32_t)     \
-  M(T, U, int64_t)
-#define MMM(T)        \
-  MM(T, uint8_t)      \
-  MM(T, uint16_t)     \
-  MM(T, uint32_t)     \
-  MM(T, uint64_t)     \
-  MM(T, int8_t)       \
-  MM(T, int16_t)      \
-  MM(T, int32_t)      \
-  MM(T, int64_t)
-  MMM(uint8_t)
-  MMM(uint16_t)
-  MMM(uint32_t)
-  MMM(uint64_t)
-  MMM(int8_t)
-  MMM(int16_t)
-  MMM(int32_t)
-  MMM(int64_t)
+#  define WITH_128(F) EAT
 #endif
 
+/* clang-format off */
+#define FOR_TYPES(F) \
+  F(uint, 8) \
+  F(uint, 16) \
+  F(uint, 32) \
+  F(uint, 64) \
+  WITH_128(F)(uint, 128) \
+  F(int, 8) \
+  F(int, 16) \
+  F(int, 32) \
+  F(int, 64) \
+  WITH_128(F)(int, 128)
+/* clang-format on */
+
+#define SIGNED_int 1
+#define SIGNED_uint 0
+
+#define Y(T, min, max) \
+  static T const k##T[] = { \
+      0, \
+      1, \
+      2, \
+      3, \
+      4, \
+      5, \
+      6, \
+      cast(T, -1), \
+      cast(T, -2), \
+      cast(T, -3), \
+      cast(T, -4), \
+      cast(T, -5), \
+      cast(T, -6), \
+      min(T), \
+      cast(T, min(T) + 1), \
+      cast(T, min(T) + 2), \
+      cast(T, min(T) + 3), \
+      cast(T, min(T) + 4), \
+      max(T), \
+      cast(T, max(T) - 1), \
+      cast(T, max(T) - 2), \
+      cast(T, max(T) - 3), \
+      cast(T, max(T) - 4), \
+      cast(T, min(T) / 2), \
+      cast(T, min(T) / 2 + 1), \
+      cast(T, min(T) / 2 + 2), \
+      cast(T, min(T) / 2 + 3), \
+      cast(T, min(T) / 2 + 4), \
+      cast(T, max(T) / 2), \
+      cast(T, max(T) / 2 - 1), \
+      cast(T, max(T) / 2 - 2), \
+      cast(T, max(T) / 2 - 3), \
+      cast(T, max(T) / 2 - 4), \
+  };
+#define X(S, N) \
+  Y(S##N##_t, \
+    CAT(TMIN_, IF(SIGNED_##S)(INT, UINT)), \
+    CAT(TMAX_, IF(SIGNED_##S)(INT, UINT)))
+FOR_TYPES(X)
+#undef X
+#undef Y
+
+static FILE* reference;
+static unsigned char ref;
+static size_t size;
+align(16) static unsigned char buffer[16];
+static long offset;
+static int i;
+static int j;
+static char const* t_type;
+static char const* u_type;
+static char const* v_type;
+static char const* op;
+static void const* u_ptr;
+static int (*u_stringify)(void const*, char*);
+static void const* v_ptr;
+static int (*v_stringify)(void const*, char*);
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+#ifdef __ckd_have_int128
+typedef uint128_t u128;
+#endif
+
+#define read_8() (cast(u8, buffer[0]))
+#define read_16() \
+  (cast(u16, (cast(u16, buffer[0]) << 8) | cast(u16, buffer[1])))
+#define read_32_(b) \
+  (cast(u32, \
+        (cast(u32, buffer[(b) * 4]) << 24) \
+            | (cast(u32, buffer[(b) * 4 + 1]) << 16) \
+            | (cast(u32, buffer[(b) * 4 + 2]) << 8) \
+            | cast(u32, buffer[(b) * 4 + 3])))
+#define read_32() read_32_(0)
+#define read_64_(b) \
+  (cast(u64, \
+        (cast(u64, read_32_((b) * 2)) << 32) \
+            | cast(u64, read_32_((b) * 2 + 1))))
+#define read_64() read_64_(0)
+#ifdef __ckd_have_int128
+#  define read_128() \
+    (cast(u128, (cast(u128, read_64_(0)) << 64) | cast(u128, read_64_(1))))
+#endif
+
+#define STRINGIFY_BUFFER 41
+
+static char c1[STRINGIFY_BUFFER];
+static char c2[STRINGIFY_BUFFER];
+static char c3[STRINGIFY_BUFFER];
+static char c4[STRINGIFY_BUFFER];
+
+static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
+{
+  int in = i1 < i2 ? i1 : i2;
+#define msg \
+  "Mismatch @ 0x%lX\n  Actual:   (%c) %s\n  Expected: (%c) %s\n  Types: T =" \
+  " %s, U = %s, V = %s\n  Operation: %s(%s, %s)\n  Vector indices: i = %d, " \
+  "j = %d\n"
+#define args \
+  cast(unsigned long, offset), '0' + o1, c1 + in, '0' + o2, c2 + in, t_type, \
+      u_type, v_type, op, c3 + i3, c4 + i4, i, j
+  assert(fprintf(stderr, msg, args) >= 0);
+#undef args
+#undef msg
 }
 
+#define X(S, N) \
+  static char const* str_##S##N##_t = #S #N "_t"; \
+  static int stringify_##S##N##_t(void const* x_, char* c) \
+  { \
+    S##N##_t x = *cast(S##N##_t const*, x_); \
+    int p = STRINGIFY_BUFFER; \
+    WHEN(SIGNED_##S)(bool const s = x < 0); \
+    c[--p] = 0; \
+    do { \
+      S##N##_t tmp = cast(S##N##_t, x % 10); \
+      c[--p] = '0' + cast(char, WHEN(SIGNED_##S)(s ? -tmp :) tmp); \
+      x /= 10; \
+    } while (x != 0); \
+    WHEN(SIGNED_##S)(if (s) c[--p] = '-'); \
+    memset(c, ' ', cast(size_t, p)); \
+    return p; \
+  } \
+  static bool mismatch_##S##N##_t(bool o1, S##N##_t z1) \
+  { \
+    bool o2 = (ref & 0x40) != 0; \
+    S##N##_t z2 = cast(S##N##_t, read_##N()); \
+    if (o1 == o2 && z1 == z2) { \
+      return false; \
+    } \
+    report_mismatch(o1, \
+                    o2, \
+                    stringify_##S##N##_t(&z1, c1), \
+                    stringify_##S##N##_t(&z2, c2), \
+                    u_stringify(u_ptr, c3), \
+                    v_stringify(v_ptr, c4)); \
+    return true; \
+  }
+FOR_TYPES(X)
+#undef X
+
+static void read_next(void)
+{
+  offset = ftell(reference);
+#ifdef __ckd_have_int128
+  assert(fread(&ref, 1, 1, reference) == 1);
+  size = cast(size_t, ref & 0x3F);
+  assert(fread(buffer, 1, size, reference) == size);
 #else
-int main(int argc, char *argv[]) {
-  (void)argc;
-  (void)argv;
-}
+  while (1) {
+    assert(fread(&ref, 1, 1, reference) == 1);
+    size = cast(size_t, ref & 0x3F);
+    if ((ref & 0x80) == 0) {
+      assert(fread(buffer, 1, size, reference) == size);
+      return;
+    }
+    assert(fseek(reference, cast(long, size), SEEK_CUR) == 0);
+    offset += 1 + cast(long, size);
+  }
 #endif
+}
+
+static char const* str_ckd_add = "ckd_add";
+static char const* str_ckd_sub = "ckd_sub";
+static char const* str_ckd_mul = "ckd_mul";
+
+#define check_next(T, f) \
+  do { \
+    op = str_##f; \
+    read_next(); \
+    o = f(&z, x, y); \
+    if (mismatch_##T(o, z)) { \
+      return true; \
+    } \
+  } while (0)
+
+#define M(T, U, V) \
+  v_type = str_##V; \
+  for (i = 0; i != cast(int, sizeof(k##U) / sizeof(k##U[0])); ++i) { \
+    U x = k##U[i]; \
+    u_ptr = &x; \
+    u_stringify = stringify_##U; \
+    for (j = 0; j != cast(int, sizeof(k##V) / sizeof(k##V[0])); ++j) { \
+      T z; \
+      V y = k##V[j]; \
+      v_ptr = &y; \
+      v_stringify = stringify_##V; \
+      check_next(T, ckd_add); \
+      check_next(T, ckd_sub); \
+      check_next(T, ckd_mul); \
+    } \
+  }
+
+/* clang-format off */
+#define MM(T, U) \
+  u_type = str_##U; \
+  M(T, U, uint8_t) \
+  M(T, U, uint16_t) \
+  M(T, U, uint32_t) \
+  M(T, U, uint64_t) \
+  WITH_128(M)(T, U, uint128_t) \
+  M(T, U, int8_t) \
+  M(T, U, int16_t) \
+  M(T, U, int32_t) \
+  M(T, U, int64_t) \
+  WITH_128(M)(T, U, int128_t)
+
+#define MMM(T) \
+  static bool test_##T(void) \
+  { \
+    bool o = false; \
+    t_type = str_##T; \
+    MM(T, uint8_t) \
+    MM(T, uint16_t) \
+    MM(T, uint32_t) \
+    MM(T, uint64_t) \
+    WITH_128(MM)(T, uint128_t) \
+    MM(T, int8_t) \
+    MM(T, int16_t) \
+    MM(T, int32_t) \
+    MM(T, int64_t) \
+    WITH_128(MM)(T, int128_t) \
+    v_ptr = nil; \
+    u_ptr = nil; \
+    return false; \
+  }
+
+MMM(uint8_t)
+MMM(uint16_t)
+MMM(uint32_t)
+MMM(uint64_t)
+WITH_128(MMM)(uint128_t)
+MMM(int8_t)
+MMM(int16_t)
+MMM(int32_t)
+MMM(int64_t)
+WITH_128(MMM)(int128_t)
+EAT()
+/* clang-format on */
+
+int test_odr(int a, int b);
+
+static char const* get_platform(int x)
+{
+  if (CHAR_BIT != x + 8) {
+    return "unknown";
+  }
+
+  if (sizeof(int) + sizeof(long) + sizeof(void*) == x + 12) {
+    return "ILP32";
+  }
+
+  if (sizeof(long) + sizeof(void*) == x + 16) {
+    return "LP64";
+  }
+
+  if (sizeof(long long) + sizeof(void*) == x + 16) {
+    return "LLP64";
+  }
+
+  return "unknown";
+}
+
+int main(int argc, char* argv[])
+{
+  (void)argv;
+
+#ifdef __ckd_have_int128
+#  define msg "+ [%s] intmax: 128\n"
+#else
+#  define msg "+ [%s] intmax: 64\n"
+#endif
+  assert(printf(msg, get_platform(argc < 0)) >= 0);
+#undef msg
+
+  int ops_without_overflow = test_odr(1, -1);
+  if (ops_without_overflow != 3) {
+#define msg "Expected 3 pre-test operations without overflow, got %d.\n"
+    assert(fprintf(stderr, msg, ops_without_overflow) >= 0);
+#undef msg
+    return 1;
+  }
+
+  assert(reference = fopen("test.bin", "rb"));
+
+#define X(S, N) \
+  if (test_##S##N##_t()) { \
+    return 1; \
+  }
+  FOR_TYPES(X)
+#undef X
+
+#ifndef __ckd_have_int128
+  while (1) {
+    if (fread(&ref, 1, 1, reference) != 1) {
+      break;
+    }
+    assert((ref & 0x80) != 0);
+    assert(fseek(reference, ref & 0x3F, SEEK_CUR) == 0);
+  }
+#endif
+
+  if (fgetc(reference) != EOF || !feof(reference)) {
+    long current = ftell(reference);
+    long end = 0;
+    assert(fseek(reference, 0, SEEK_END) == 0);
+    end = ftell(reference);
+#define msg "Reference was not read to completion. %ld bytes left.\n"
+    assert(fprintf(stderr, msg, end - current) >= 0);
+#undef msg
+    return 1;
+  }
+
+  assert(fclose(reference) == 0);
+  return 0;
+}
