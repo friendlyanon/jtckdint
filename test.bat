@@ -73,24 +73,25 @@ echo ? arch=amd64
 
 if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\19
 
-set comp=clang.exe -isystem . -Weverything -Wno-declaration-after-statement -Wno-unsafe-buffer-usage -Wno-pre-c11-compat -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
+set flags=-fno-ms-compatibility -isystem . -Weverything  -Wno-unsafe-buffer-usage -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
+set comp=clang.exe %flags% -Wno-declaration-after-statement -Wno-pre-c11-compat
 
 call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" || goto :exit
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c11 -D__STRICT_ANSI__=1 || goto :exit
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c11 || goto :exit
 
 call :build -O0 -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" || goto :exit
-call :build -O0 -std=c11 -D__STRICT_ANSI__=1 || goto :exit
+call :build -O0 -std=c11 || goto :exit
 
 call :build -O3 -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" || goto :exit
-call :build -O3 -std=c11 -D__STRICT_ANSI__=1 || goto :exit
+call :build -O3 -std=c11 || goto :exit
 
-set comp=clang++.exe -isystem . -Weverything -Wno-unsafe-buffer-usage -Wno-c++98-compat -Wno-c++98-compat-pedantic -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe -x c++
+set comp=clang++.exe %flags% -Wno-c++98-compat -Wno-c++98-compat-pedantic -x c++
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 -D__STRICT_ANSI__=1 || goto :exit
+call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 || goto :exit
 
-call :build -O0 -std=c++14 -D__STRICT_ANSI__=1 || goto :exit
+call :build -O0 -std=c++14 || goto :exit
 
-call :build -O3 -std=c++14 -D__STRICT_ANSI__=1
+call :build -O3 -std=c++14
 
 exit /b %errorlevel%
 
