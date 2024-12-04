@@ -69,8 +69,16 @@
 #  define ckd_has_feature(x) 0
 #endif
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L \
-    && ckd_has_include(<stdckdint.h>)
+/**
+ * JTCKDINT_OPTION_STDCKDINT
+ *   = 0: detect <stdckdint.h>
+ *   = 1: always use <stdckdint.h>
+ *   = 2: never use <stdckdint.h>
+ */
+#if defined(JTCKDINT_OPTION_STDCKDINT) && JTCKDINT_OPTION_STDCKDINT == 1 \
+    || (!defined(JTCKDINT_OPTION_STDCKDINT) || JTCKDINT_OPTION_STDCKDINT == 0) \
+        && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L \
+        && ckd_has_include(<stdckdint.h>)
 #  include <stdckdint.h>
 #else
 

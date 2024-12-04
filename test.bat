@@ -46,7 +46,7 @@ echo ? arch=%arch%
 call mingw.bat %arch% || goto :exit
 
 set ubsan=-fsanitize=undefined -fsanitize-undefined-trap-on-error
-set flags=-isystem . -Wall -Wextra -Wconversion -Werror -Wfatal-errors -o test.exe
+set flags=-isystem . -Wall -Wextra -Wconversion -Werror -Wfatal-errors -DJTCKDINT_OPTION_STDCKDINT=2 -o test.exe
 set comp=gcc.exe %flags%
 
 call :build -Os %ubsan% -std=gnu11 || goto :exit
@@ -77,7 +77,7 @@ if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM
 
 set ubsan=-fsanitize=undefined -fsanitize-undefined-trap-on-error
 set builtins=-l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
-set flags=-fno-ms-compatibility -isystem . -Weverything  -Wno-unsafe-buffer-usage -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
+set flags=-fno-ms-compatibility -isystem . -Weverything  -Wno-unsafe-buffer-usage -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -DJTCKDINT_OPTION_STDCKDINT=2 -o test.exe
 set comp=clang.exe %flags% -Wno-declaration-after-statement -Wno-pre-c11-compat
 
 call :build -Os %ubsan% -std=gnu11 %builtins% || goto :exit
@@ -118,7 +118,7 @@ echo ? arch=%arch%
 
 call vcvars.bat -arch=%arch% -host_arch=amd64 -no_logo || goto :exit
 
-set comp=cl.exe /nologo /Wall /wd4710 /WX /D_CRT_SECURE_NO_WARNINGS=1 /diagnostics:caret /external:I . /external:W0 /permissive- /Zc:inline /Zc:preprocessor
+set comp=cl.exe /nologo /Wall /wd4710 /WX /D_CRT_SECURE_NO_WARNINGS=1 /DJTCKDINT_OPTION_STDCKDINT=2 /diagnostics:caret /external:I . /external:W0 /permissive- /Zc:inline /Zc:preprocessor
 
 call :build /Od /d2Obforceinline /std:c11 || goto :exit
 
