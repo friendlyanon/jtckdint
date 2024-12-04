@@ -45,10 +45,12 @@ echo ? arch=%arch%
 
 call mingw.bat %arch% || goto :exit
 
-set comp=gcc.exe -isystem . -Wall -Wextra -Wconversion -Werror -Wfatal-errors -o test.exe
+set ubsan=-fsanitize=undefined -fsanitize-undefined-trap-on-error
+set flags=-isystem . -Wall -Wextra -Wconversion -Werror -Wfatal-errors -o test.exe
+set comp=gcc.exe %flags%
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=gnu11 || goto :exit
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -Wpedantic -std=c11 || goto :exit
+call :build -Os %ubsan% -std=gnu11 || goto :exit
+call :build -Os %ubsan% -Wpedantic -std=c11 || goto :exit
 
 call :build -O0 -std=gnu11 || goto :exit
 call :build -O0 -Wpedantic -std=c11 || goto :exit
@@ -56,9 +58,9 @@ call :build -O0 -Wpedantic -std=c11 || goto :exit
 call :build -O3 -std=gnu11 || goto :exit
 call :build -O3 -Wpedantic -std=c11 || goto :exit
 
-set comp=g++.exe -isystem . -Wall -Wextra -Wconversion -Wpedantic -Werror -Wfatal-errors -o test.exe -x c++
+set comp=g++.exe %flags% -Wpedantic -x c++
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 || goto :exit
+call :build -Os %ubsan% -std=c++14 || goto :exit
 
 call :build -O0 -std=c++14 || goto :exit
 
@@ -73,21 +75,23 @@ echo ? arch=amd64
 
 if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\19
 
+set ubsan=-fsanitize=undefined -fsanitize-undefined-trap-on-error
+set builtins=-l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
 set flags=-fno-ms-compatibility -isystem . -Weverything  -Wno-unsafe-buffer-usage -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -o test.exe
 set comp=clang.exe %flags% -Wno-declaration-after-statement -Wno-pre-c11-compat
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" || goto :exit
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c11 || goto :exit
+call :build -Os %ubsan% -std=gnu11 %builtins% || goto :exit
+call :build -Os %ubsan% -std=c11 || goto :exit
 
-call :build -O0 -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" || goto :exit
+call :build -O0 -std=gnu11 %builtins% || goto :exit
 call :build -O0 -std=c11 || goto :exit
 
-call :build -O3 -std=gnu11 -l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib" || goto :exit
+call :build -O3 -std=gnu11 %builtins% || goto :exit
 call :build -O3 -std=c11 || goto :exit
 
 set comp=clang++.exe %flags% -Wno-c++98-compat -Wno-c++98-compat-pedantic -x c++
 
-call :build -Os -fsanitize=undefined -fsanitize-undefined-trap-on-error -std=c++14 || goto :exit
+call :build -Os %ubsan% -std=c++14 || goto :exit
 
 call :build -O0 -std=c++14 || goto :exit
 
