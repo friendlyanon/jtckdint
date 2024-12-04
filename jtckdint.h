@@ -82,11 +82,11 @@
 #  include <stdckdint.h>
 #else
 
-#  if (!defined(__STRICT_ANSI__) && defined(__SIZEOF_INT128__))
+#  if !defined(__STRICT_ANSI__) && defined(__SIZEOF_INT128__)
 #    define ckd_have_int128
 #    define ckd_longest __int128
-#  elif (defined(__cplusplus) && __cplusplus >= 201103L) \
-      || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+#  elif defined(__cplusplus) && __cplusplus >= 201103L \
+      || defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 #    define ckd_longest long long
 #  else
 #    define ckd_longest long
@@ -136,11 +136,11 @@ typedef unsigned ckd_longest ckd_uintmax;
 #      define ckd_inline inline
 #    endif
 
-#    if (defined(_MSC_VER) && defined(_MSVC_LANG) && _MSC_VER >= 1915 \
-         && _MSVC_LANG >= 201402L) \
-        || (defined(__llvm__) && ckd_has_feature(__cxx_generic_lambdas__) \
-            && ckd_has_feature(__cxx_relaxed_constexpr__)) \
-        || (defined(__cpp_constexpr) && (__cpp_constexpr >= 201304L))
+#    if defined(_MSC_VER) && defined(_MSVC_LANG) && _MSC_VER >= 1915 \
+            && _MSVC_LANG >= 201402L \
+        || defined(__llvm__) && ckd_has_feature(__cxx_generic_lambdas__) \
+            && ckd_has_feature(__cxx_relaxed_constexpr__) \
+        || defined(__cpp_constexpr) && (__cpp_constexpr >= 201304L)
 #      define ckd_constexpr constexpr
 #    else
 #      define ckd_constexpr
