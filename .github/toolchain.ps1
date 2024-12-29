@@ -2,7 +2,7 @@ $arch = $args[0]
 $compiler = $args[1]
 
 if ($compiler -eq 'mingw') {
-  $tag = (Invoke-RestMethod https://api.github.com/repos/friendlyanon/w64devkit/releases/latest -Method Get).tag_name
+  $tag = (Invoke-WebRequest https://github.com/friendlyanon/w64devkit/releases/latest -Method Head -MaximumRedirection 0 -SkipHttpErrorCheck -ErrorAction SilentlyContinue).Headers.Location.Split('/') | select -Last 1
   Invoke-WebRequest "https://github.com/friendlyanon/w64devkit/releases/download/$tag/mingw-$arch.exe" -OutFile "mingw-$arch.exe"
   Start-Process "mingw-$arch.exe" -ArgumentList '-y', '-o.' -Wait
   Set-Content mingw.bat "@echo off`r`nset CC=gcc.exe`r`nset CXX=g++.exe`r`nset `"PATH=%cd%\w64devkit\bin;%PATH%`""
