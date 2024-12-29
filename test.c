@@ -226,7 +226,7 @@ static void read_next(void)
   size = cast(size_t, ref & 0x3F);
   assert(fread(buffer, 1, size, reference) == size);
 #else
-  while (1) {
+  for (;;) {
     assert(fread(&ref, 1, 1, reference) == 1);
     size = cast(size_t, ref & 0x3F);
     if ((ref & 0x80) == 0) {
@@ -366,7 +366,7 @@ int main(int argc, char* argv[])
 #undef X
 
 #ifndef ckd_have_int128
-  while (1) {
+  for (;;) {
     if (fread(&ref, 1, 1, reference) != 1) {
       break;
     }

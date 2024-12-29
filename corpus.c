@@ -126,7 +126,7 @@ static u8 buffer[1 + sizeof(u128)];
     int index = (int)sizeof(buffer); \
     u32 to_write = 0; \
     u8 o = (u8)(__builtin_##op##_overflow(x, y, &z)); \
-    while (1) { \
+    for (;;) { \
       buffer[--index] = (u8)(z & 0xFF); \
       if (--count == 0) { \
         break; \
