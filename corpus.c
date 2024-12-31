@@ -81,7 +81,7 @@ typedef unsigned __int128 u128;
 #define SIGNED_i 1
 #define SIGNED_u 0
 
-#define Y(T, min, max) \
+#define Z(T, min, max) \
   static T const k##T[] = { \
       0, \
       1, \
@@ -117,11 +117,12 @@ typedef unsigned __int128 u128;
       (T)(max(T) / 2 - 3), \
       (T)(max(T) / 2 - 4), \
   };
-#define X(S, N) \
-  Y(S##N, CAT(TMIN_, IF(SIGNED_##S)(I, U)), CAT(TMAX_, IF(SIGNED_##S)(I, U)))
+#define Y(T, S) Z(T, CAT(TMIN_, S), CAT(TMAX_, S))
+#define X(S, N) Y(S##N, IF(SIGNED_##S)(I, U))
 FOR_TYPES(X)
 #undef X
 #undef Y
+#undef Z
 
 static FILE* reference;
 static u8 buffer[1 + sizeof(u128)];
