@@ -27,11 +27,18 @@
 #include <limits.h>
 #include <stdio.h>
 
+#if CHAR_BIT != 8
+#  error "CHAR_BIT is not 8"
+#endif
+
+#if (-1 & 3) != 3
+#  error "Integers are not two's complement"
+#endif
+
 #ifndef INT64
 #  define INT64 long
 #endif
 
-typedef char static_assert_char_bit_is_8_bits[(CHAR_BIT == 8) * 2 - 1];
 typedef char static_assert_fundamentals_match_stdint
     [(sizeof(short) == 2 && sizeof(int) == 4 && sizeof(INT64) == 8) * 2 - 1];
 
