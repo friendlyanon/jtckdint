@@ -39,12 +39,6 @@
 #  define INT64 long
 #endif
 
-typedef char static_assert_fundamentals_match_stdint
-    [(sizeof(short) == 2 && sizeof(int) == 4 && sizeof(INT64) == 8) * 2 - 1];
-
-#define TMIN_U(T) ((T)(0))
-#define TMAX_U(T) ((T)(~(T)(0)))
-
 typedef signed char i8;
 typedef unsigned char u8;
 typedef short i16;
@@ -55,6 +49,15 @@ typedef INT64 i64;
 typedef unsigned INT64 u64;
 typedef __int128 i128;
 typedef unsigned __int128 u128;
+
+#define sizeof(T) ((i32)sizeof(T))
+#define countof(A) (sizeof(A) / sizeof(*(A)))
+
+typedef char static_assert_fundamentals_match_stdint
+    [(sizeof(short) == 2 && sizeof(int) == 4 && sizeof(INT64) == 8) * 2 - 1];
+
+#define TMIN_U(T) ((T)(0))
+#define TMAX_U(T) ((T)(~(T)(0)))
 
 #define TBIT(T) (sizeof(T) * 8 - 1)
 #define TMIN_I(T) ((T)((u128)(1) << TBIT(T)))
@@ -130,10 +133,10 @@ static u8 buffer[1 + sizeof(u128)];
 #define output_next(T, op, is_int128) \
   do { \
     T z = 0; \
-    int count = (int)sizeof(T); \
-    int index = (int)sizeof(buffer); \
+    i32 count = sizeof(T); \
+    i32 index = sizeof(buffer); \
     u32 to_write = 0; \
-    u8 o = (u8)(__builtin_##op##_overflow(x, y, &z)); \
+    u8 o = !!(__builtin_##op##_overflow(x, y, &z)); \
     for (;;) { \
       buffer[--index] = (u8)(z & 0xFF); \
       if (--count == 0) { \
@@ -143,14 +146,14 @@ static u8 buffer[1 + sizeof(u128)];
       z >>= 4; \
     } \
     buffer[--index] = (u8)(((is_int128) << 7) | (o << 6) | (u8)sizeof(T)); \
-    to_write = (u32)((int)sizeof(buffer) - index); \
+    to_write = (u32)(sizeof(buffer) - index); \
     assert(fwrite(buffer + index, 1, to_write, reference) == to_write); \
   } while (0)
 
 #define M(T, U, V, I) \
-  for (i = 0; i != (int)(sizeof(k##U) / sizeof(k##U[0])); ++i) { \
+  for (i = 0; i != countof(k##U); ++i) { \
     U x = k##U[i]; \
-    for (j = 0; j != (int)(sizeof(k##V) / sizeof(k##V[0])); ++j) { \
+    for (j = 0; j != countof(k##V); ++j) { \
       V y = k##V[j]; \
       output_next(T, add, I); \
       output_next(T, sub, I); \
@@ -173,8 +176,8 @@ static u8 buffer[1 + sizeof(u128)];
 #define MMM(T, I) \
   static void output_##T(void) \
   { \
-    int i = 0; \
-    int j = 0; \
+    i32 i = 0; \
+    i32 j = 0; \
     MM(T, u8, 0 | I) \
     MM(T, u16, 0 | I) \
     MM(T, u32, 0 | I) \

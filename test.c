@@ -193,8 +193,8 @@ static void report_mismatch(bool o1, bool o2, int i1, int i2, int i3, int i4)
     c[--p] = 0; \
     do { \
       S##N tmp = cast(S##N, x % 10); \
-      c[--p] = '0' + cast(char, WHEN(SIGNED_##S)(s ? -tmp :) tmp); \
       x /= 10; \
+      c[--p] = '0' + cast(char, WHEN(SIGNED_##S)(s ? -tmp :) tmp); \
     } while (x != 0); \
     WHEN(SIGNED_##S)(if (s) c[--p] = '-'); \
     memset(c, ' ', cast(size_t, p)); \
