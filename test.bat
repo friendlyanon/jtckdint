@@ -27,18 +27,13 @@ exit /b %code%
 :mingw32
 setlocal
 set arch=x86
-call :mingw
-exit /b
+goto :mingw
 
 :mingw64
 setlocal
 set arch=amd64
-call :mingw
-exit /b
 
 :mingw
-setlocal
-
 echo ? arch=%arch%
 
 call mingw.bat %arch% || exit /b
@@ -100,18 +95,13 @@ exit /b
 :msvc32
 setlocal
 set arch=x86
-call :msvc
-exit /b
+goto :msvc
 
 :msvc64
 setlocal
 set arch=amd64
-call :msvc
-exit /b
 
 :msvc
-setlocal
-
 echo ? arch=%arch%
 
 call vcvars.bat -arch=%arch% -host_arch=amd64 -no_logo || exit /b
