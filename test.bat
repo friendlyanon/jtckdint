@@ -38,7 +38,7 @@ echo ? arch=%arch%
 
 call mingw.bat %arch% || exit /b
 
-set ubsan=-fsanitize=undefined -fsanitize-undefined-trap-on-error
+set ubsan=-fsanitize=undefined -fsanitize-trap=undefined
 set flags=-isystem . -Wall -Wextra -Wconversion -Werror -Wfatal-errors -DJTCKDINT_OPTION_STDCKDINT=2 -o test.exe
 set comp=gcc.exe %flags%
 
@@ -66,9 +66,9 @@ setlocal
 
 echo ? arch=amd64
 
-if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\19
+if "%CLANG_VERSION_PREFIX%" == "" set CLANG_VERSION_PREFIX=C:\Program Files\LLVM\lib\clang\20
 
-set ubsan=-fsanitize=undefined -fsanitize-undefined-trap-on-error
+set ubsan=-fsanitize=undefined -fsanitize-trap=undefined
 set builtins=-l "%CLANG_VERSION_PREFIX%\lib\windows\clang_rt.builtins-x86_64.lib"
 set flags=-fno-ms-compatibility -isystem . -Weverything  -Wno-unsafe-buffer-usage -Werror -Wfatal-errors -D_CRT_SECURE_NO_WARNINGS=1 -DJTCKDINT_OPTION_STDCKDINT=2 -o test.exe
 set comp=clang.exe %flags% -Wno-declaration-after-statement -Wno-pre-c11-compat
